@@ -18,31 +18,36 @@ export default function AbmCategorias() {
   const agregarCategoria = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('categorias').insert([{ nombre }]);
-    if (error) alert(error.message);
-    else {
+    if (!error) {
       setNombre('');
       fetchCategorias();
     }
   };
 
+  const eliminarCategoria = async (id) => {
+    await supabase.from('categorias').delete().eq('id', id);
+    fetchCategorias();
+  };
+
   return (
     <div className="card bg-dark border-info text-white shadow h-100">
       <div className="card-body">
-        <h4 className="card-title text-info mb-4">Métricas de Votación</h4>
+        <h4 className="text-info mb-4">Métricas de Votación</h4>
         <form onSubmit={agregarCategoria} className="mb-4">
           <div className="input-group">
-            <input type="text" className="form-control" placeholder="Ej: Feeling, Vestuario..." 
+            <input type="text" className="form-control" placeholder="Ej: PBI, Feeling, Perfo..." 
               value={nombre} onChange={e => setNombre(e.target.value)} required />
             <button className="btn btn-info">Añadir</button>
           </div>
         </form>
-        <ul className="list-group list-group-flush">
+        <div className="list-group list-group-flush">
           {categorias.map(cat => (
-            <li key={cat.id} className="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between">
+            <div key={cat.id} className="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
               <span>✨ {cat.nombre}</span>
-            </li>
+              <button onClick={() => eliminarCategoria(cat.id)} className="btn btn-sm btn-outline-danger">×</button>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );
