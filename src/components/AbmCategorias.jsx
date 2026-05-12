@@ -2,52 +2,46 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function AbmCategorias() {
+export default function AbmCategorias({ onUpdate }) {
   const [nombre, setNombre] = useState('');
   const [categorias, setCategorias] = useState([]);
 
-  useEffect(() => {
-    fetchCategorias();
-  }, []);
+  useEffect(() => { fetchCategorias(); }, []);
 
   const fetchCategorias = async () => {
     const { data } = await supabase.from('categorias').select('*');
     setCategorias(data || []);
   };
 
-  const agregarCategoria = async (e) => {
+  
+
+  const agregar = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('categorias').insert([{ nombre }]);
-    if (!error) {
+    if (!error) { 
       setNombre('');
-      fetchCategorias();
+      onUpdate(); // Esto actualiza el estado en la página padre (page.js)
     }
-  };
-
-  const eliminarCategoria = async (id) => {
-    await supabase.from('categorias').delete().eq('id', id);
-    fetchCategorias();
   };
 
   return (
     <div className="card bg-dark border-info text-white shadow h-100">
       <div className="card-body">
         <h4 className="text-info mb-4">Métricas de Votación</h4>
-        <form onSubmit={agregarCategoria} className="mb-4">
+        <form onSubmit={agregar} className="mb-4">
           <div className="input-group">
-            <input type="text" className="form-control" placeholder="Ej: PBI, Feeling, Perfo..." 
+            <input type="text" className="form-control" placeholder="Ej: PBI, Perfo..." 
               value={nombre} onChange={e => setNombre(e.target.value)} required />
             <button className="btn btn-info">Añadir</button>
           </div>
         </form>
-        <div className="list-group list-group-flush">
-          {categorias.map(cat => (
-            <div key={cat.id} className="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
-              <span>✨ {cat.nombre}</span>
-              <button onClick={() => eliminarCategoria(cat.id)} className="btn btn-sm btn-outline-danger">×</button>
-            </div>
+        <ul className="list-group list-group-flush">
+          {categorias.map(c => (
+            <li key={c.id} className="list-group-item bg-transparent text-light border-secondary">
+              ✨ {c.nombre}
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </div>
   );
