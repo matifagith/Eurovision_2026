@@ -1,55 +1,48 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import AbmCategorias from '../../components/AbmCategorias';
+import AbmPaises from '../../components/AbmPaises';
 
-export default function VotacionPage() {
+export default function AdminPage() {
   const [categorias, setCategorias] = useState([]);
-  const [paisActivo, setPaisActivo] = useState(null);
-  const [votos, setVotos] = useState({});
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      // Trae el país que marcaste como habilitado en Supabase
-      const { data: pais } = await supabase.from('paises').select('*').eq('habilitado', true).single();
-      setPaisActivo(pais);
-      
-      // Trae las categorías (PBI, Perfo, etc.)
-      const { data: cats } = await supabase.from('categorias').select('*');
-      setCategorias(cats || []);
-    };
-    loadInitialData();
+    fetchCategorias();
   }, []);
 
-  const enviarVotacion = async () => {
-    // Aquí irá la lógica para guardar en la tabla 'votaciones'
-    alert("Votos enviados. ¡Gracias Juez!");
+  const fetchCategorias = async () => {
+    const { data } = await supabase.from('categorias').select('*');
+    setCategorias(data || []);
   };
 
-  if (!paisActivo) return <div className="container mt-5 text-center"><h3>Esperando que el Admin habilite un país...</h3></div>;
-
   return (
-    <div className="container py-4">
-      <div className="card bg-dark border-warning shadow">
-        <div className="card-header bg-warning text-dark text-center">
-          <h2 className="mb-0">{paisActivo.nombre.toUpperCase()}</h2>
-          <small>{paisActivo.artista} - {paisActivo.cancion}</small>
+    <main className="container py-5">
+      <h1 className="text-center mb-5 text-primary fw-bold">Configuración Eurovisión 2026</h1>
+      
+      <div className="row g-4">
+        {/* PASO 1: METRICAS (PBI, Perfo, Feeling...) */}
+        <div className="col-lg-6">
+          <div className="p-4 border border-info rounded bg-dark shadow-sm">
+            <h3 className="text-info border-bottom pb-2 mb-4">1. Definir Métricas de Votación</h3>
+            <AbmCategorias onUpdate={fetchCategorias} />
+          </div>
         </div>
-        <div className="card-body p-4">
-          {categorias.map(cat => (
-            <div key={cat.id} className="mb-4">
-              <label className="form-label d-flex justify-content-between">
-                <strong>{cat.nombre}</strong>
-                <span className="badge bg-primary">{votos[cat.id] || 5}</span>
-              </label>
-              <input type="range" className="form-range" min="1" max="10" step="0.5" 
-                onChange={(e) => setVotos({...votos, [cat.id]: e.target.value})} />
-            </div>
-          ))}
-          <button onClick={enviarVotacion} className="btn btn-warning w-100 btn-lg fw-bold mt-3">
-            GUARDAR PUNTUACIÓN
-          </button>
+
+        {/* PASO 2: PAISES (Bloqueado visualmente si no hay métricas) */}
+        <div className="col-lg-6">
+          <div className={`p-4 border rounded bg-dark shadow-sm ${categorias.length === 0 ? 'border-secondary opacity-50' : 'border-warning'}`}>
+            <h3 className="text-warning border-bottom pb-2 mb-4">2. Cargar Países Participantes</h3>
+            {categorias.length === 0 ? (
+              <div className="alert alert-secondary">
+                ⚠️ Primero debes agregar al menos una métrica (ej: PBI) para habilitar la carga de países.
+              </div>
+            ) : (
+              <AbmPaises />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

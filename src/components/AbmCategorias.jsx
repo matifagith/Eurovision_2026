@@ -13,14 +13,13 @@ export default function AbmCategorias({ onUpdate }) {
     setCategorias(data || []);
   };
 
-  
-
-  const agregar = async (e) => {
+ const agregarCategoria = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('categorias').insert([{ nombre }]);
-    if (!error) { 
+    if (!error) {
       setNombre('');
-      onUpdate(); // Esto actualiza el estado en la página padre (page.js)
+      fetchCategorias(); // Actualiza la lista local del componente
+      if (onUpdate) onUpdate(); // Dispara la actualización en la página principal
     }
   };
 
