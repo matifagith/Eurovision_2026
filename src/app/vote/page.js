@@ -16,6 +16,10 @@ function VotacionContenido() {
   const [loading, setLoading] = useState(true)
   const [puntajes, setPuntajes] = useState({})
   const [historialVotos, setHistorialVotos] = useState([])
+  
+  // NUEVO: Estado para la notificación flotante
+  const [showToast, setShowToast] = useState(false)
+  const [toastMsg, setToastMsg] = useState("")
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'))
@@ -56,21 +60,18 @@ function VotacionContenido() {
     fetchDatos()
   }, [edicionId])
 
-  // NUEVO: useEffect para precargar puntajes cuando cambias de país o se actualiza el historial
   useEffect(() => {
     if (participantes.length > 0 && categorias.length > 0) {
       const idParticipacionActual = participantes[indiceActual]?.id_participacion
       const votoExistente = historialVotos.find(v => v.id_participacion === idParticipacionActual)
 
       if (votoExistente && votoExistente.detalles_voto.length > 0) {
-        // Precargar valores del historial
         const nuevosPuntajes = {}
         votoExistente.detalles_voto.forEach(d => {
           nuevosPuntajes[d.id_categoria] = Number(d.puntaje)
         })
         setPuntajes(nuevosPuntajes)
       } else {
-        // Resetear a 5 si es nuevo
         const resetPuntajes = {}
         categorias.forEach(c => { resetPuntajes[c.id_categoria] = 5 })
         setPuntajes(resetPuntajes)
@@ -88,6 +89,7 @@ function VotacionContenido() {
 
   const handleVotar = async () => {
     if (!user) return alert("Error: Usuario no identificado.")
+    const paisNombre = participantes[indiceActual]?.paises?.nombre
     const idParticipacion = participantes[indiceActual].id_participacion
     let idLinea = historialVotos.find(v => v.id_participacion === idParticipacion)?.id_linea
 
@@ -103,25 +105,26 @@ function VotacionContenido() {
       id_linea: idLinea, id_categoria: cat.id_categoria, puntaje: puntajes[cat.id_categoria] || 5
     })))
 
-    // Actualizamos historial para reflejar el cambio inmediatamente
     await cargarHistorial(user.id_usuario, participantes.map(p => p.id_participacion))
 
-    // REDIRECCIÓN INTELIGENTE: Buscar el próximo pendiente
-    const nuevosIdsVotados = [...historialVotos.map(v => v.id_participacion), idParticipacion]
+    // MOSTRAR FEEDBACK VISUAL
+    setToastMsg(`Voto enviado para ${paisNombre} 🗳️`)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
+
     const proximoPendienteIdx = participantes.findIndex((p, idx) => {
-      // Queremos el primero que no esté en el historial, empezando desde el siguiente al actual
       return idx > indiceActual && !historialVotos.some(v => v.id_participacion === p.id_participacion)
     })
 
     if (proximoPendienteIdx !== -1) {
       setIndiceActual(proximoPendienteIdx)
     } else {
-      // Si no hay ninguno después, buscar desde el principio
       const primeroPendiente = participantes.findIndex(p => !historialVotos.some(v => v.id_participacion === p.id_participacion))
       if (primeroPendiente !== -1 && primeroPendiente !== indiceActual) {
         setIndiceActual(primeroPendiente)
       } else {
-        alert("¡Todos los países han sido votados!")
+        setToastMsg("¡Todos los países han sido votados! ✨")
+        setShowToast(true)
       }
     }
   }
@@ -148,7 +151,17 @@ function VotacionContenido() {
   const stickyStylePais = { ...stickyColStyle, left: '40px', borderRight: '2px solid #444' };
 
   return (
-    <main className="container mt-4 pb-5 max-w-lg mx-auto font-sans">
+    <main className="container mt-4 pb-5 max-w-lg mx-auto font-sans position-relative">
+      
+      {/* NOTIFICACIÓN FLOTANTE (TOAST) */}
+      {showToast && (
+        <div className="position-fixed top-0 start-50 translate-middle-x mt-3" style={{ zIndex: 3000 }}>
+          <div className="alert alert-success shadow-lg border-0 fw-bold px-4 py-3 animate__animated animate__fadeInDown">
+            {toastMsg}
+          </div>
+        </div>
+      )}
+
       <div className="card bg-dark text-white shadow-lg overflow-hidden border-0 mb-5">
         <div className="bg-primary p-2 text-center text-uppercase small fw-bold">
           {edicionActiva?.tipo} {edicionActiva?.anio} - {user?.nombre}
@@ -170,8 +183,11 @@ function VotacionContenido() {
               </div>
             ))}
           </div>
+          
           {edicionActiva?.votacion_abierta ? (
-            <button onClick={handleVotar} className="btn btn-warning w-100 fw-bold py-3 shadow fs-5 text-dark">Enviar Voto 📩</button>
+            <button onClick={handleVotar} className="btn btn-warning w-100 fw-bold py-3 shadow fs-6 text-dark text-uppercase">
+               Enviar voto para {participanteActual?.paises?.nombre} 📩
+            </button>
           ) : (
             <button onClick={() => setIndiceActual((indiceActual + 1) % participantes.length)} className="btn btn-outline-light w-100 py-3 fs-5">Siguiente País ⏭️</button>
           )}
@@ -179,6 +195,7 @@ function VotacionContenido() {
       </div>
 
       <h4 className="text-light mb-3 fw-bold border-bottom border-secondary pb-2">Tu Historial de Votos</h4>
+      
       <div className="table-responsive shadow-sm rounded border border-secondary" style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto' }}>
         <table className="table table-dark table-hover align-middle mb-0" style={{ whiteSpace: 'nowrap', minWidth: '900px' }}>
           <thead className="text-dark text-uppercase small fw-bold" style={stickyHeaderStyle}>
@@ -212,11 +229,13 @@ function VotacionContenido() {
                 >
                   <th scope="row" style={{ ...stickyStyleNum, backgroundColor: bgRow }} className={esTop10 ? 'text-warning' : ''}>{idx + 1}</th>
                   <td style={{ ...stickyStylePais, backgroundColor: bgRow }} className={`fw-bold ${esActual ? 'text-warning' : ''}`}>{row.paises.nombre}</td>
+                  
                   {categorias.map(cat => (
                     <td key={cat.id_categoria} className="text-center text-light opacity-75">
                       {row.votado ? row.votosPorCategoria[cat.id_categoria] : '-'}
                     </td>
                   ))}
+                  
                   <td className="text-center fw-bold text-dark bg-warning">{row.votado ? row.promedio.toFixed(2) : '-'}</td>
                   <td className="text-center">
                     <span className={`badge ${row.votado ? 'bg-success' : 'bg-secondary'} small`}>{row.votado ? 'Votado' : 'Pendiente'}</span>
