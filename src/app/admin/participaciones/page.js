@@ -179,7 +179,7 @@ export default function ParticipacionesPage() {
         <h2 className="display-6 fw-bold text-uppercase">Participaciones 🎤</h2>
         <div>
           <button onClick={() => {setEditId(null); setModalAbierto(true)}} className="btn btn-primary fw-bold me-2 shadow-sm">Nueva ➕</button>
-          <Link href="/admin" className="btn btn-outline-light fw-bold shadow-sm">Volver</Link>
+          <Link href="/admin" className="btn btn-outline-light fw-bold shadow-sm">Volver al panel de control</Link>
         </div>
       </div>
 

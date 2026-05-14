@@ -40,7 +40,7 @@ export default function ABMCategorias() {
     <main className="container mt-5 max-w-2xl mx-auto">
       <div className="d-flex justify-content-between mb-4">
         <h1 className="h3 fw-bold">Gestión de Categorías Globales</h1>
-        <Link href="/admin" className="btn btn-outline-light">Volver al Admin</Link>
+        <Link href="/admin" className="btn btn-outline-light">Volver al panel de control</Link>
       </div>
 
       <form onSubmit={handleSubmit} className="card bg-dark text-light p-4 mb-5 shadow border-primary">

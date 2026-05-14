@@ -21,7 +21,7 @@ export default function ABMArtistas() {
 
   return (
     <main className="container mt-5 max-w-2xl mx-auto">
-      <div className="d-flex justify-content-between mb-4"><h3>Artistas</h3><Link href="/admin" className="btn btn-sm btn-outline-light">Volver</Link></div>
+      <div className="d-flex justify-content-between mb-4"><h3>Artistas</h3><Link href="/admin" className="btn btn-outline-light">Volver al panel de control</Link></div>
       <form onSubmit={save} className="card bg-dark p-3 mb-4 border-warning shadow">
         <input className="form-control mb-2" placeholder="Nombre del Artista" value={nombre} onChange={e => setNombre(e.target.value)} required />
         <button className="btn btn-warning fw-bold">{editId ? 'Guardar' : 'Agregar'}</button>

@@ -51,7 +51,7 @@ export default function CategoriasPorEdicion() {
     <main className="container mt-5 max-w-2xl mx-auto">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold text-warning">Categorías de: {edicion?.tipo} {edicion?.anio}</h2>
-        <button onClick={() => router.push('/admin')} className="btn btn-outline-light">Volver</button>
+        <button onClick={() => router.push('/admin')} className="btn btn-outline-light">Volver al panel de control</button>
       </div>
       
       <p className="text-muted mb-4">Seleccioná qué categorías evaluarán los jueces en esta edición específica. Los cambios se guardan automáticamente.</p>

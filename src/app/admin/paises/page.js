@@ -32,7 +32,7 @@ export default function ABMPaises() {
     <main className="container mt-5 max-w-2xl mx-auto">
       <div className="d-flex justify-content-between mb-4">
         <h3>Países</h3>
-        <Link href="/admin" className="btn btn-sm btn-outline-light">Volver</Link>
+        <Link href="/admin" className="btn btn-outline-light">Volver al panel de control</Link>
       </div>
       
       <form onSubmit={save} className="card bg-dark p-3 mb-4 border-danger shadow">
