@@ -148,7 +148,7 @@ function VotacionContenido() {
       })
         .then((dataUrl) => {
           const link = document.createElement('a')
-          link.download = `Eurovision-${edicionActiva?.tipo}-${user?.nombre}.png`
+          link.download = `Eurovision-${edicionActiva?.anio}-${edicionActiva?.tipo}-by-${user?.nombre}.png`
           link.href = dataUrl
           link.click()
           setToastMsg("Imagen guardada 📸")
