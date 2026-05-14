@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react' // Agregado useRef
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { toPng } from 'html-to-image' // Importante: npm install html-to-image
 
 function VotacionContenido() {
   const searchParams = useSearchParams()
   const edicionId = searchParams.get('edicionId')
+  const tablaRef = useRef(null) // Referencia para la captura
   
   const [user, setUser] = useState(null)
   const [edicionActiva, setEdicionActiva] = useState(null)
@@ -16,8 +18,8 @@ function VotacionContenido() {
   const [loading, setLoading] = useState(true)
   const [puntajes, setPuntajes] = useState({})
   const [historialVotos, setHistorialVotos] = useState([])
+  const [isDownloading, setIsDownloading] = useState(false)
   
-  // NUEVO: Estado para la notificación flotante
   const [showToast, setShowToast] = useState(false)
   const [toastMsg, setToastMsg] = useState("")
 
@@ -87,6 +89,33 @@ function VotacionContenido() {
     setHistorialVotos(lineas || [])
   }
 
+  // FUNCIÓN PARA DESCARGAR RESULTADOS
+  const descargarResultados = () => {
+    if (tablaRef.current === null) return
+    setIsDownloading(true)
+
+    toPng(tablaRef.current, { 
+      cacheBust: true, 
+      backgroundColor: '#1a1a1a',
+      style: { maxHeight: 'none', overflow: 'visible', height: 'auto' },
+      height: tablaRef.current.scrollHeight
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a')
+        link.download = `Eurovision-${edicionActiva?.tipo}-${user?.nombre}.png`
+        link.href = dataUrl
+        link.click()
+        setToastMsg("Imagen guardada 📸")
+        setShowToast(true)
+        setTimeout(() => setShowToast(false), 3000)
+      })
+      .catch(() => {
+        setToastMsg("Error al descargar ❌")
+        setShowToast(true)
+      })
+      .finally(() => setIsDownloading(false))
+  }
+
   const handleVotar = async () => {
     if (!user) return alert("Error: Usuario no identificado.")
     const paisNombre = participantes[indiceActual]?.paises?.nombre
@@ -107,7 +136,6 @@ function VotacionContenido() {
 
     await cargarHistorial(user.id_usuario, participantes.map(p => p.id_participacion))
 
-    // MOSTRAR FEEDBACK VISUAL
     setToastMsg(`Voto enviado para ${paisNombre} 🗳️`)
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
@@ -153,7 +181,6 @@ function VotacionContenido() {
   return (
     <main className="container mt-4 pb-5 max-w-lg mx-auto font-sans position-relative">
       
-      {/* NOTIFICACIÓN FLOTANTE (TOAST) */}
       {showToast && (
         <div className="position-fixed top-0 start-50 translate-middle-x mt-3" style={{ zIndex: 3000 }}>
           <div className="alert alert-success shadow-lg border-0 fw-bold px-4 py-3 animate__animated animate__fadeInDown">
@@ -194,9 +221,22 @@ function VotacionContenido() {
         </div>
       </div>
 
-      <h4 className="text-light mb-3 fw-bold border-bottom border-secondary pb-2">Tu Historial de Votos</h4>
+      <div className="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+        <h4 className="text-light fw-bold mb-0">Tu Historial de Votos</h4>
+        <button 
+          onClick={descargarResultados} 
+          disabled={isDownloading}
+          className="btn btn-sm btn-success fw-bold px-3 py-2 shadow-sm d-flex align-items-center"
+        >
+          {isDownloading ? 'Generando...' : 'Descargar ranking 📸'}
+        </button>
+      </div>
       
-      <div className="table-responsive shadow-sm rounded border border-secondary" style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto' }}>
+      <div 
+        ref={tablaRef}
+        className="table-responsive shadow-sm rounded border border-secondary" 
+        style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto', backgroundColor: '#1a1a1a' }}
+      >
         <table className="table table-dark table-hover align-middle mb-0" style={{ whiteSpace: 'nowrap', minWidth: '900px' }}>
           <thead className="text-dark text-uppercase small fw-bold" style={stickyHeaderStyle}>
             <tr>
@@ -221,21 +261,16 @@ function VotacionContenido() {
                 <tr 
                   key={row.id_participacion} 
                   onClick={() => setIndiceActual(indexOriginal)}
-                  style={{ 
-                    cursor: 'pointer',
-                    borderLeft: esTop10 ? '4px solid #ffc107' : '4px solid transparent'
-                  }}
+                  style={{ cursor: 'pointer', borderLeft: esTop10 ? '4px solid #ffc107' : '4px solid transparent' }}
                   className={esActual ? 'table-active' : ''}
                 >
                   <th scope="row" style={{ ...stickyStyleNum, backgroundColor: bgRow }} className={esTop10 ? 'text-warning' : ''}>{idx + 1}</th>
                   <td style={{ ...stickyStylePais, backgroundColor: bgRow }} className={`fw-bold ${esActual ? 'text-warning' : ''}`}>{row.paises.nombre}</td>
-                  
                   {categorias.map(cat => (
                     <td key={cat.id_categoria} className="text-center text-light opacity-75">
                       {row.votado ? row.votosPorCategoria[cat.id_categoria] : '-'}
                     </td>
                   ))}
-                  
                   <td className="text-center fw-bold text-dark bg-warning">{row.votado ? row.promedio.toFixed(2) : '-'}</td>
                   <td className="text-center">
                     <span className={`badge ${row.votado ? 'bg-success' : 'bg-secondary'} small`}>{row.votado ? 'Votado' : 'Pendiente'}</span>
