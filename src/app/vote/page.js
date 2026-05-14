@@ -14,11 +14,7 @@ function VotacionContenido() {
   const [categorias, setCategorias] = useState([])
   const [indiceActual, setIndiceActual] = useState(0)
   const [loading, setLoading] = useState(true)
-  
-  // Estado para los inputs range (sliders) actuales
   const [puntajes, setPuntajes] = useState({})
-  
-  // Historial de votos del usuario para calcular el ranking
   const [historialVotos, setHistorialVotos] = useState([])
 
   useEffect(() => {
@@ -29,149 +25,106 @@ function VotacionContenido() {
 
     const fetchDatos = async () => {
       setLoading(true)
-      
       const { data: edicion } = await supabase.from('ediciones').select('*').eq('id_edicion', edicionId).single()
       setEdicionActiva(edicion)
 
       const { data: parts } = await supabase.from('participaciones')
-        .select(`id_participacion, paises ( nombre ), canciones ( nombre )`)
+        .select(`
+          id_participacion, 
+          clasifico, 
+          paises ( nombre ), 
+          canciones ( nombre ),
+          participacion_artista ( artistas ( nombre ) )
+        `)
         .eq('id_edicion', edicionId)
       setParticipantes(parts || [])
 
-      // (REEMPLAZAR LA CONSULTA VIEJA DE CATEGORIAS POR ESTA)
-      const { data: cats } = await supabase
-        .from('edicion_categorias')
-        .select(`
-          categorias ( id_categoria, nombre, descripcion )
-        `)
+      const { data: cats } = await supabase.from('edicion_categorias')
+        .select(`categorias ( id_categoria, nombre, descripcion )`)
         .eq('id_edicion', edicionId)
 
-      // Extraer los datos mapeados
       if (cats) {
         const categoriasLimpias = cats.map(c => c.categorias).sort((a,b) => a.id_categoria - b.id_categoria)
         setCategorias(categoriasLimpias)
       }
 
-      // Traer historial de votos del usuario si existe
       if (storedUser) {
-        await cargarHistorial(storedUser.id_usuario, parts.map(p => p.id_participacion))
+        await cargarHistorial(storedUser.id_usuario, (parts || []).map(p => p.id_participacion))
       }
-
       setLoading(false)
     }
-
     fetchDatos()
   }, [edicionId])
 
-  // Cargar lo que ya votó el usuario para armar la tabla
   const cargarHistorial = async (idUsuario, idsParticipaciones) => {
     if (idsParticipaciones.length === 0) return
-
-    const { data: lineas } = await supabase
-      .from('lineas_votacion')
-      .select(`
-        id_linea, 
-        id_participacion, 
-        detalles_voto ( id_categoria, puntaje )
-      `)
-      .eq('id_usuario', idUsuario)
-      .in('id_participacion', idsParticipaciones)
-    
+    const { data: lineas } = await supabase.from('lineas_votacion')
+      .select(`id_linea, id_participacion, detalles_voto ( id_categoria, puntaje )`)
+      .eq('id_usuario', idUsuario).in('id_participacion', idsParticipaciones)
     setHistorialVotos(lineas || [])
   }
 
-  // Resetear los sliders cuando cambiamos de país
-  useEffect(() => {
-    if (categorias.length > 0 && participantes.length > 0) {
-      const pActual = participantes[indiceActual]
-      const votoPrevio = historialVotos.find(v => v.id_participacion === pActual.id_participacion)
-      
-      const nuevosPuntajes = {}
-      categorias.forEach(cat => {
-        const detalle = votoPrevio?.detalles_voto.find(d => d.id_categoria === cat.id_categoria)
-        nuevosPuntajes[cat.id_categoria] = detalle ? detalle.puntaje : 5
-      })
-      setPuntajes(nuevosPuntajes)
-    }
-  }, [indiceActual, categorias, participantes, historialVotos])
-
-  const handlePuntajeChange = (idCategoria, valor) => {
-    setPuntajes({ ...puntajes, [idCategoria]: parseFloat(valor) })
-  }
-
-  // Guardar en la base de datos
   const handleVotar = async () => {
     if (!user) return alert("Error: Usuario no identificado.")
     const idParticipacion = participantes[indiceActual].id_participacion
-
     let idLinea = historialVotos.find(v => v.id_participacion === idParticipacion)?.id_linea
 
     if (!idLinea) {
-      const { data: nuevaLinea, error: errLinea } = await supabase
-        .from('lineas_votacion')
+      const { data: nuevaLinea } = await supabase.from('lineas_votacion')
         .insert([{ id_usuario: user.id_usuario, id_participacion: idParticipacion }])
         .select().single()
-      
-      if (errLinea) return alert("Error al crear linea de votación")
       idLinea = nuevaLinea.id_linea
     }
 
     await supabase.from('detalles_voto').delete().eq('id_linea', idLinea)
-    
-    const detallesAInsertar = categorias.map(cat => ({
-      id_linea: idLinea,
-      id_categoria: cat.id_categoria,
-      puntaje: puntajes[cat.id_categoria]
-    }))
-
-    await supabase.from('detalles_voto').insert(detallesAInsertar)
+    await supabase.from('detalles_voto').insert(categorias.map(cat => ({
+      id_linea: idLinea, id_categoria: cat.id_categoria, puntaje: puntajes[cat.id_categoria]
+    })))
 
     await cargarHistorial(user.id_usuario, participantes.map(p => p.id_participacion))
-    pasarSiguiente()
-  }
-
-  const pasarSiguiente = () => {
     setIndiceActual((indiceActual + 1) % participantes.length)
   }
 
-  if (loading) return <div className="container mt-5 text-center">Cargando edición...</div>
-  if (!participantes.length) return <div className="container mt-5 text-center">No hay participantes.</div>
+  if (loading) return <div className="container mt-5 text-center text-white opacity-50">Cargando...</div>
 
   const participanteActual = participantes[indiceActual]
+  
+  // Lógica para armar el string de artistas
+  const listaArtistas = participanteActual?.participacion_artista?.map(pa => pa.artistas?.nombre).join(', ')
 
-  // --- LÓGICA DE LA TABLA (Ranking + Desglose de Categorías) ---
   const ranking = participantes.map(p => {
     const linea = historialVotos.find(v => v.id_participacion === p.id_participacion)
-    let total = 0
-    let promedio = 0
-    let votosPorCategoria = {} // Diccionario para guardar el voto específico por ID de categoría
-
+    let total = 0, promedio = 0, votosPorCategoria = {}
     if (linea && linea.detalles_voto.length > 0) {
       total = linea.detalles_voto.reduce((acc, curr) => acc + Number(curr.puntaje), 0)
       promedio = total / linea.detalles_voto.length
-      
-      // Guardamos el puntaje específico de cada categoría
-      linea.detalles_voto.forEach(detalle => {
-        votosPorCategoria[detalle.id_categoria] = Number(detalle.puntaje)
-      })
+      linea.detalles_voto.forEach(d => { votosPorCategoria[d.id_categoria] = Number(d.puntaje) })
     }
-    
-    return { ...p, promedio, total, votado: !!linea, votosPorCategoria }
+    return { ...p, promedio, votado: !!linea, votosPorCategoria }
   }).sort((a, b) => b.promedio - a.promedio)
+
+  const stickyHeaderStyle = { position: 'sticky', top: 0, zIndex: 20 };
+  const stickyColStyle = { position: 'sticky', zIndex: 15 };
+  const stickyStyleNum = { ...stickyColStyle, left: 0 };
+  const stickyStylePais = { ...stickyColStyle, left: '40px', borderRight: '2px solid #444' };
 
   return (
     <main className="container mt-4 pb-5 max-w-lg mx-auto font-sans">
       
-      {/* TARJETA DE VOTACIÓN */}
+      {/* TARJETA DE VOTACIÓN ACTUALIZADA */}
       <div className="card bg-dark text-white shadow-lg overflow-hidden border-0 mb-5">
         <div className="bg-primary p-2 text-center text-uppercase small fw-bold">
           {edicionActiva?.tipo} {edicionActiva?.anio} - {user?.nombre}
         </div>
         <div className="card-body p-4 p-md-5 text-center">
-          <h1 className="display-4 fw-bold text-warning mb-1">{participanteActual.paises.nombre}</h1>
-          <h3 className="h6 text-light mb-4 opacity-75">🎵 {participanteActual.canciones.nombre}</h3>
-          <hr className="border-secondary mb-4" />
+          <h1 className="display-4 fw-bold text-warning mb-1">{participanteActual?.paises?.nombre}</h1>
           
+          {/* LÍNEA DE CANCIÓN + ARTISTA (Modificado aquí) */}
+          <h3 className="h6 text-light mb-4 opacity-75">
+            🎵 {participanteActual?.canciones?.nombre} {listaArtistas ? `by ${listaArtistas}` : ''}
+          </h3>
+          
+          <hr className="border-secondary mb-4" />
           <div className="text-start mb-4">
             {categorias.map(cat => (
               <div key={cat.id_categoria} className="mb-4">
@@ -179,85 +132,68 @@ function VotacionContenido() {
                   <label className="form-label small fw-bold text-uppercase mb-0">{cat.nombre}</label>
                   <span className="badge bg-secondary fs-6">{puntajes[cat.id_categoria] || 5}</span>
                 </div>
-                <input 
-                  type="range" 
-                  className="form-range custom-range" 
-                  min="1" max="10" step="0.5" 
-                  value={puntajes[cat.id_categoria] || 5}
-                  onChange={(e) => handlePuntajeChange(cat.id_categoria, e.target.value)}
-                  disabled={!edicionActiva?.votacion_abierta} 
-                />
+                <input type="range" className="form-range" min="1" max="10" step="0.5" value={puntajes[cat.id_categoria] || 5} onChange={(e) => setPuntajes({ ...puntajes, [cat.id_categoria]: parseFloat(e.target.value) })} disabled={!edicionActiva?.votacion_abierta} />
               </div>
             ))}
           </div>
-
           {edicionActiva?.votacion_abierta ? (
-            <button onClick={handleVotar} className="btn btn-warning w-100 fw-bold py-3 shadow fs-5">
-              Enviar Voto 📩
-            </button>
+            <button onClick={handleVotar} className="btn btn-warning w-100 fw-bold py-3 shadow fs-5 text-dark">Enviar Voto 📩</button>
           ) : (
-            <button onClick={pasarSiguiente} className="btn btn-outline-light w-100 py-3 fs-5">
-              Siguiente País ⏭️
-            </button>
+            <button onClick={() => setIndiceActual((indiceActual + 1) % participantes.length)} className="btn btn-outline-light w-100 py-3 fs-5">Siguiente País ⏭️</button>
           )}
         </div>
       </div>
 
-      {/* TABLA DE HISTORIAL / LEADERBOARD */}
       <h4 className="text-light mb-3 fw-bold border-bottom border-secondary pb-2">Tu Historial de Votos</h4>
-      <div className="table-responsive shadow-sm rounded">
-        <table className="table table-dark table-hover align-middle mb-0" style={{ whiteSpace: 'nowrap' }}>
-          <thead className="table-secondary text-dark">
+      
+      <div className="table-responsive shadow-sm rounded border border-secondary" style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table className="table table-dark table-hover align-middle mb-0" style={{ whiteSpace: 'nowrap', minWidth: '900px' }}>
+          <thead className="text-dark text-uppercase small fw-bold" style={stickyHeaderStyle}>
             <tr>
-              <th scope="col">#</th>
-              <th scope="col">País</th>
-              
-              {/* Columnas dinámicas de categorías */}
+              <th style={{ ...stickyStyleNum, backgroundColor: '#adb5bd', top: 0, zIndex: 25 }}>#</th>
+              <th style={{ ...stickyStylePais, backgroundColor: '#adb5bd', top: 0, zIndex: 25 }}>País</th>
               {categorias.map(cat => (
-                <th key={cat.id_categoria} scope="col" className="text-center small">
-                  {cat.nombre}
-                </th>
+                <th key={cat.id_categoria} className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>{cat.nombre}</th>
               ))}
-              
-              <th scope="col" className="text-center bg-warning text-dark border-start border-dark">Promedio</th>
-              <th scope="col" className="text-center">Estado</th>
+              <th className="text-center bg-warning text-dark" style={{ top: 0 }}>Promedio</th>
+              <th className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>Estado</th>
+              <th className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>Resultado</th>
             </tr>
           </thead>
           <tbody>
             {ranking.map((row, idx) => {
-              const indexOriginal = participantes.findIndex(p => p.id_participacion === row.id_participacion)
-              const esActual = indexOriginal === indiceActual
+              const esTop10 = idx < 10;
+              const indexOriginal = participantes.findIndex(p => p.id_participacion === row.id_participacion);
+              const esActual = indexOriginal === indiceActual;
+              const bgRow = esActual ? '#2c3034' : '#212529';
 
               return (
                 <tr 
                   key={row.id_participacion} 
                   onClick={() => setIndiceActual(indexOriginal)}
-                  style={{ cursor: 'pointer' }}
-                  className={esActual ? 'table-active border-primary' : ''}
+                  style={{ 
+                    cursor: 'pointer',
+                    borderLeft: esTop10 ? '4px solid #ffc107' : '4px solid transparent'
+                  }}
+                  className={esActual ? 'table-active' : ''}
                 >
-                  <th scope="row" className={esActual ? 'text-primary' : ''}>{idx + 1}</th>
-                  <td className={`fw-bold ${esActual ? 'text-warning' : ''}`}>
-                    {row.paises.nombre}
-                    {esActual && <span className="ms-2 small text-warning">👀</span>}
-                  </td>
+                  <th scope="row" style={{ ...stickyStyleNum, backgroundColor: bgRow }} className={esTop10 ? 'text-warning' : ''}>{idx + 1}</th>
+                  <td style={{ ...stickyStylePais, backgroundColor: bgRow }} className={`fw-bold ${esActual ? 'text-warning' : ''}`}>{row.paises.nombre}</td>
                   
-                  {/* Celdas dinámicas de categorías */}
                   {categorias.map(cat => (
                     <td key={cat.id_categoria} className="text-center text-light opacity-75">
-                      {row.votado && row.votosPorCategoria[cat.id_categoria] !== undefined 
-                        ? row.votosPorCategoria[cat.id_categoria] 
-                        : '-'}
+                      {row.votado ? row.votosPorCategoria[cat.id_categoria] : '-'}
                     </td>
                   ))}
-
-                  <td className="text-center fw-bold text-dark bg-warning border-start border-dark">
-                    {row.votado ? row.promedio.toFixed(2) : '-'}
+                  
+                  <td className="text-center fw-bold text-dark bg-warning">{row.votado ? row.promedio.toFixed(2) : '-'}</td>
+                  <td className="text-center">
+                    <span className={`badge ${row.votado ? 'bg-success' : 'bg-secondary'} small`}>{row.votado ? 'Votado' : 'Pendiente'}</span>
                   </td>
                   <td className="text-center">
-                    {row.votado 
-                      ? <span className="badge bg-success">Votado</span>
-                      : <span className="badge bg-secondary">Pendiente</span>
-                    }
+                    {!edicionActiva?.votacion_abierta ? (
+                      row.clasifico ? <span className="badge bg-success fs-6">✅</span> : <span className="badge bg-danger fs-6">❌</span>
+                    ) : <span className="text-secondary opacity-50 small">-</span>}
                   </td>
                 </tr>
               )
@@ -265,7 +201,6 @@ function VotacionContenido() {
           </tbody>
         </table>
       </div>
-      
     </main>
   )
 }

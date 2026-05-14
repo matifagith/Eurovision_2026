@@ -1,8 +1,9 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'Eurovision 2026 - Salta Judges',
-  description: 'App para puntuar el concurso en vivo',
+  title: 'Eurovision contest - Salta Judges',
+  description: 'App oficial para la puntuación del certamen en vivo',
 };
 
 export default function RootLayout({ children }) {
@@ -11,16 +12,18 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className="bg-dark text-light">
-        <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
-          <div className="container">
-            <a className="navbar-brand fw-bold" href="/">Eurovision 2026 🇦🇹</a>
-            <div className="d-flex">
-              <a href="/dashboard" className="btn btn-info btn-sm me-2 fw-bold text-dark">Lobby</a>              
-            </div>
-          </div>
-        </nav>
-        {children}
+      <body className="bg-dark text-light" style={{ backgroundColor: '#0f0f0f', minHeight: '100vh' }}>
+        <Navbar />
+        <div className="pt-2">
+          {children}
+        </div>
+        
+        <style dangerouslySetInnerHTML={{ __html: `
+          ::-webkit-scrollbar { width: 8px; }
+          ::-webkit-scrollbar-track { background: #0f0f0f; }
+          ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+          ::-webkit-scrollbar-thumb:hover { background: #444; }
+        `}} />
       </body>
     </html>
   );
