@@ -80,6 +80,7 @@ function VotacionContenido() {
       const { data: parts } = await supabase.from('participaciones')
         .select(`id_participacion, clasifico, paises ( nombre ), canciones ( nombre ), participacion_artista ( artistas ( nombre ) )`)
         .eq('id_edicion', edicionId)
+        .order('orden_salida', { ascending: true });
       setParticipantes(parts || [])
       const { data: cats } = await supabase.from('edicion_categorias')
         .select(`categorias ( id_categoria, nombre, descripcion )`)

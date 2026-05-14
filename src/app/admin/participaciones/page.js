@@ -12,14 +12,14 @@ export default function ParticipacionesPage() {
   
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina, setItemsPorPagina] = useState(10);
-  const [sortConfig, setSortConfig] = useState({ key: 'id_participacion', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'orden_salida', direction: 'asc' });
   
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({
     id_edicion: '', id_pais: '', nombre_cancion: '', nombres_artistas: '',
-    clasifico: false, puesto_oficial: '', puntos_oficiales: ''
+    clasifico: false, puesto_oficial: '', puntos_oficiales: '', orden_salida: ''
   });
 
   const [sugerenciasCancion, setSugerenciasCancion] = useState([]);
@@ -46,12 +46,11 @@ export default function ParticipacionesPage() {
     let query = supabase
       .from('participaciones')
       .select(`
-        id_participacion, id_edicion, id_pais, id_cancion, clasifico, puesto_oficial, puntos_oficiales,
+        id_participacion, id_edicion, id_pais, id_cancion, clasifico, puesto_oficial, puntos_oficiales, orden_salida,
         paises ( nombre ), canciones ( nombre ),
         ediciones!inner ( anio, tipo ),
         participacion_artista ( artistas ( nombre ) )
-      `)
-      .order('id_participacion', { ascending: false });
+      `);
 
     if (filtrosActivos.id_edicion !== 'Todos') {
       query = query.eq('id_edicion', filtrosActivos.id_edicion);
@@ -70,6 +69,12 @@ export default function ParticipacionesPage() {
       }
       setParticipaciones(dataFiltrada || []);
     }
+  };
+
+  const actualizarOrdenRapido = async (id, nuevoOrden) => {
+    const valor = parseInt(nuevoOrden) || 0;
+    await supabase.from('participaciones').update({ orden_salida: valor }).eq('id_participacion', id);
+    fetchParticipaciones();
   };
 
   const solicitarSort = (key) => {
@@ -109,7 +114,9 @@ export default function ParticipacionesPage() {
       nombre_cancion: part.canciones?.nombre || '',
       nombres_artistas: part.participacion_artista.map(pa => pa.artistas?.nombre).join(', '),
       clasifico: part.clasifico || false,
-      puesto_oficial: part.puesto_oficial || '', puntos_oficiales: part.puntos_oficiales || ''
+      puesto_oficial: part.puesto_oficial || '', 
+      puntos_oficiales: part.puntos_oficiales || '',
+      orden_salida: part.orden_salida || ''
     });
     setModalAbierto(true);
   };
@@ -146,7 +153,8 @@ export default function ParticipacionesPage() {
         id_edicion: formData.id_edicion, id_pais: formData.id_pais, id_cancion: cancionId,
         clasifico: formData.clasifico,
         puesto_oficial: formData.puesto_oficial === '' ? null : parseInt(formData.puesto_oficial),
-        puntos_oficiales: formData.puntos_oficiales === '' ? null : parseInt(formData.puntos_oficiales)
+        puntos_oficiales: formData.puntos_oficiales === '' ? null : parseInt(formData.puntos_oficiales),
+        orden_salida: formData.orden_salida === '' ? 0 : parseInt(formData.orden_salida)
       };
       if (editId) {
         await supabase.from('participaciones').update(payload).eq('id_participacion', editId);
@@ -196,10 +204,28 @@ export default function ParticipacionesPage() {
             <label className="form-label small fw-bold text-uppercase text-white">Buscar</label>
             <input type="text" className="form-control bg-dark text-white border-secondary shadow-sm" value={filtros.busqueda} onChange={(e) => setFiltros({...filtros, busqueda: e.target.value})} placeholder="🔍 País, canción o artista..." />
           </div>
-          <div className="col-md-3 d-flex gap-2">
-            <button onClick={() => fetchParticipaciones()} className="btn btn-primary fw-bold flex-grow-1 shadow-sm">Filtrar</button>
-            <button onClick={() => {setFiltros({id_edicion:'Todos', busqueda:''}); fetchParticipaciones({id_edicion:'Todos', busqueda:''})}} className="btn btn-outline-secondary fw-bold flex-grow-1 text-light shadow-sm">Borrar</button>
-          </div>
+          <div className="col-md-3 d-flex flex-column gap-2">
+  {/* Texto del total arriba */}
+  <div className="small fw-bold text-uppercase text-white opacity-75 text-end" style={{ letterSpacing: '1px' }}>
+    Total de registros = <span className="text-warning">{participaciones.length}</span>
+  </div>
+  
+  {/* Contenedor de botones abajo */}
+  <div className="d-flex gap-2">
+    <button onClick={() => fetchParticipaciones()} className="btn btn-primary fw-bold flex-grow-1 shadow-sm">
+      Filtrar
+    </button>
+    <button 
+      onClick={() => {
+        setFiltros({id_edicion:'Todos', busqueda:''}); 
+        fetchParticipaciones({id_edicion:'Todos', busqueda:''});
+      }} 
+      className="btn btn-outline-secondary fw-bold flex-grow-1 text-light shadow-sm"
+    >
+      Borrar filtros
+    </button>
+  </div>
+</div>
         </div>
       </div>
 
@@ -207,7 +233,8 @@ export default function ParticipacionesPage() {
         <table className="table table-dark table-hover align-middle mb-0">
           <thead className="table-secondary text-dark text-uppercase small fw-bold">
             <tr>
-              <th onClick={() => solicitarSort('anio')} style={{cursor:'pointer', userSelect:'none'}}>Edición {getSortIcon('anio')}</th>
+              <th onClick={() => solicitarSort('orden_salida')} style={{cursor:'pointer', userSelect:'none'}}>Orden {getSortIcon('orden_salida')}</th>
+              <th>Edición</th>
               <th onClick={() => solicitarSort('pais')} style={{cursor:'pointer', userSelect:'none'}}>País {getSortIcon('pais')}</th>
               <th>Canción & Artista(s)</th>
               <th className="text-center">Estado</th>
@@ -218,10 +245,11 @@ export default function ParticipacionesPage() {
           </thead>
           <tbody>
             {participacionesActuales.length === 0 ? (
-              <tr><td colSpan="7" className="text-center py-4 opacity-50">No se encontraron resultados</td></tr>
+              <tr><td colSpan="8" className="text-center py-4 opacity-50">No se encontraron resultados</td></tr>
             ) : (
               participacionesActuales.map((part) => (
                 <tr key={part.id_participacion}>
+                  <td className="fw-bold text-white">{part.orden_salida}</td>
                   <td className="small">
                     <div className="fw-bold text-white">{part.ediciones?.anio}</div>
                     <div className="opacity-75">{part.ediciones?.tipo}</div>
@@ -320,18 +348,22 @@ export default function ParticipacionesPage() {
                 </div>
                 <hr className="border-secondary my-4" />
                 <div className="row g-3 mb-4">
-                  <div className="col-md-4 d-flex align-items-center">
+                  <div className="col-md-3 d-flex align-items-center">
                     <div className="form-check form-switch">
                       <input className="form-check-input" type="checkbox" id="clasificoCheck" checked={formData.clasifico} onChange={(e) => setFormData({...formData, clasifico: e.target.checked})} />
                       <label className="form-check-label fw-bold" htmlFor="clasificoCheck">Clasificó</label>
                     </div>
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold text-info">PUESTO</label>
+                  <div className="col-md-3">
+                    <label className="form-label small fw-bold text-warning text-uppercase">ORDEN</label>
+                    <input type="number" className="form-control bg-dark text-white border-secondary fw-bold" value={formData.orden_salida} onChange={(e) => setFormData({...formData, orden_salida: e.target.value})} />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label small fw-bold text-info text-uppercase">PUESTO</label>
                     <input type="number" className="form-control bg-dark text-white border-secondary" value={formData.puesto_oficial} onChange={(e) => setFormData({...formData, puesto_oficial: e.target.value})} />
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold text-info">PUNTOS</label>
+                  <div className="col-md-3">
+                    <label className="form-label small fw-bold text-info text-uppercase">PUNTOS</label>
                     <input type="number" className="form-control bg-dark text-white border-secondary" value={formData.puntos_oficiales} onChange={(e) => setFormData({...formData, puntos_oficiales: e.target.value})} />
                   </div>
                 </div>
