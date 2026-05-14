@@ -186,7 +186,7 @@ function VotacionContenido() {
           
           {edicionActiva?.votacion_abierta ? (
             <button onClick={handleVotar} className="btn btn-warning w-100 fw-bold py-3 shadow fs-6 text-dark text-uppercase">
-               Enviar voto para {participanteActual?.paises?.nombre} 📩
+               Enviar voto - {participanteActual?.paises?.nombre} 📩
             </button>
           ) : (
             <button onClick={() => setIndiceActual((indiceActual + 1) % participantes.length)} className="btn btn-outline-light w-100 py-3 fs-5">Siguiente País ⏭️</button>
