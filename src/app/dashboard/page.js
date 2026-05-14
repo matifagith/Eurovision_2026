@@ -64,17 +64,17 @@ export default function Dashboard() {
           
           <div className="row g-4">
             {ediciones.filter(e => e.anio === anio).map(ed => {
-              const anioActual = 2026; 
-              // La card es accesible si es un año pasado, o si es el actual (esté abierta o cerrada para votar)
-              const habilitada = ed.anio <= anioActual;
+              // LÓGICA DE ESTADOS BASADA EN edicion_lista
+              const estaLista = ed.edicion_lista; // Atributo nuevo
+              const abierta = ed.votacion_abierta;
 
               return (
                 <div key={ed.id_edicion} className="col-md-4">
                   <div 
-                    onClick={() => habilitada && router.push(`/vote?edicionId=${ed.id_edicion}`)}
-                    className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${habilitada ? 'btn-hover-effect' : 'opacity-50'}`}
+                    onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
+                    className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
                     style={{ 
-                      cursor: habilitada ? 'pointer' : 'default', 
+                      cursor: estaLista ? 'pointer' : 'default', 
                       borderRadius: '15px', 
                       transition: 'all 0.3s ease' 
                     }}
@@ -88,43 +88,48 @@ export default function Dashboard() {
                         )}
                       </div>
                       
-                      <h4 className={`fw-bold mb-1 ${habilitada ? 'text-warning' : 'text-secondary opacity-75'}`}>
+                      <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
                         {ed.tipo}
                       </h4>
                       <p className="text-muted small text-uppercase mb-3" style={{ letterSpacing: '1px' }}>{anio}</p>
                       
                       <div className="d-grid gap-2">
-                        {ed.votacion_abierta ? (
-                          <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
-                        ) : habilitada ? (
-                          <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
-                        ) : (
+                        {!estaLista ? (
+                          /* CASO 1: LA EDICIÓN NO ESTÁ LISTA */
                           <div className="btn btn-outline-secondary disabled fw-bold opacity-50" style={{ border: '1px solid #444' }}>
                             COMING SOON ⏳
                           </div>
+                        ) : abierta ? (
+                          /* CASO 2: LISTA Y ABIERTA */
+                          <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
+                        ) : (
+                          /* CASO 3: LISTA PERO CERRADA */
+                          <>
+                            <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                // Por ahora no redirige, como pediste
+                                console.log("Redirigiendo a estadísticas de la edición:", ed.id_edicion);
+                              }}
+                              className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                            >
+                              ESTADÍSTICA GLOBAL 📈
+                            </button>
+                          </>
                         )}
-
-                        {/* EL BOTÓN DE ESTADÍSTICAS SIEMPRE VISIBLE SI LA GALA NO ES "COMING SOON" */}
-                        {/*habilitada && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation(); // IMPORTANTE: Para que no se dispare el click de la card
-                              router.push(`/estadisticas?edicionId=${ed.id_edicion}`);
-                            }}
-                            className="btn btn-info fw-bold text-white shadow-sm mt-1"
-                          >
-                            ESTADÍSTICAS GLOBALES 📈
-                          </button>
-                        )*/}
                       </div>
                     </div>
 
-                    <div className="position-absolute top-0 end-0 p-3">
-                      <span className={`badge rounded-pill ${ed.votacion_abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
-                            style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
-                        {ed.votacion_abierta ? 'LIVE' : 'CLOSED'}
-                      </span>
-                    </div>
+                    {/* Badge de estado (solo visible si está lista) */}
+                    {estaLista && (
+                      <div className="position-absolute top-0 end-0 p-3">
+                        <span className={`badge rounded-pill ${abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
+                              style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
+                          {abierta ? 'LIVE' : 'CLOSED'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
