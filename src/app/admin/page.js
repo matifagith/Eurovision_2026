@@ -35,6 +35,9 @@ export default function AdminPage() {
           <Link href="/admin/canciones" className="btn btn-outline-light fw-bold">Canciones</Link>
           <Link href="/admin/paises" className="btn btn-outline-danger fw-bold">Países</Link>
           <Link href="/admin/ediciones_config" className="btn btn-outline-success fw-bold">Edición</Link>
+          
+          {/* NUEVO BOTÓN PARA PARTICIPACIONES */}
+          <Link href="/admin/participaciones" className="btn btn-primary fw-bold text-white">Participaciones</Link>
         </div>
       </div>
 
