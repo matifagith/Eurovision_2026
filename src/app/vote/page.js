@@ -3,7 +3,52 @@
 import { useState, useEffect, Suspense, useRef } from 'react' // Agregado useRef
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { toPng } from 'html-to-image' // Importante: npm install html-to-image
+import { toPng } from 'html-to-image' // Asegurate de tener instalada html-to-image
+
+// ESTILOS DE IMPRESIÓN ADICIONALES (Para solucionar el corte ancho)
+// Agregaremos esto justo antes de la definición del componente para tenerlo ordenado.
+const printStyles = `
+  @media print {
+    /* Forzar orientación horizontal para más espacio */
+    @page {
+      size: landscape;
+      margin: 1cm;
+    }
+
+    /* Asegurar que el body y el main ocupen todo el ancho sin bordes de tabla-responsive */
+    body, main, .table-responsive {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      max-height: none !important;
+      border: none !important;
+    }
+
+    /* Eliminar la tarjeta de votación y el header para que solo salga la tabla */
+    .card, .d-flex.justify-content-between, h4 {
+      display: none !important;
+    }
+
+    /* Forzar que la tabla se expanda y las columnas se ajusten */
+    table {
+      table-layout: fixed !important;
+      width: 100% !important;
+      min-width: 100% !important;
+    }
+
+    /* Ajustar celdas para que el texto no se corte */
+    th, td {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+    }
+
+    /* Desactivar fondos pegajosos para evitar artefactos */
+    .table-responsive style {
+      display: none !important;
+    }
+  }
+`;
 
 function VotacionContenido() {
   const searchParams = useSearchParams()
@@ -23,40 +68,27 @@ function VotacionContenido() {
   const [showToast, setShowToast] = useState(false)
   const [toastMsg, setToastMsg] = useState("")
 
+  // ... (useEffect de fetch y precarga de puntajes se mantienen igual)
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'))
     if (storedUser) setUser(storedUser)
-
     if (!edicionId) return
-
     const fetchDatos = async () => {
       setLoading(true)
       const { data: edicion } = await supabase.from('ediciones').select('*').eq('id_edicion', edicionId).single()
       setEdicionActiva(edicion)
-
       const { data: parts } = await supabase.from('participaciones')
-        .select(`
-          id_participacion, 
-          clasifico, 
-          paises ( nombre ), 
-          canciones ( nombre ),
-          participacion_artista ( artistas ( nombre ) )
-        `)
+        .select(`id_participacion, clasifico, paises ( nombre ), canciones ( nombre ), participacion_artista ( artistas ( nombre ) )`)
         .eq('id_edicion', edicionId)
       setParticipantes(parts || [])
-
       const { data: cats } = await supabase.from('edicion_categorias')
         .select(`categorias ( id_categoria, nombre, descripcion )`)
         .eq('id_edicion', edicionId)
-
       if (cats) {
         const categoriasLimpias = cats.map(c => c.categorias).sort((a,b) => a.id_categoria - b.id_categoria)
         setCategorias(categoriasLimpias)
       }
-
-      if (storedUser) {
-        await cargarHistorial(storedUser.id_usuario, (parts || []).map(p => p.id_participacion))
-      }
+      if (storedUser) { await cargarHistorial(storedUser.id_usuario, (parts || []).map(p => p.id_participacion)) }
       setLoading(false)
     }
     fetchDatos()
@@ -66,12 +98,9 @@ function VotacionContenido() {
     if (participantes.length > 0 && categorias.length > 0) {
       const idParticipacionActual = participantes[indiceActual]?.id_participacion
       const votoExistente = historialVotos.find(v => v.id_participacion === idParticipacionActual)
-
       if (votoExistente && votoExistente.detalles_voto.length > 0) {
         const nuevosPuntajes = {}
-        votoExistente.detalles_voto.forEach(d => {
-          nuevosPuntajes[d.id_categoria] = Number(d.puntaje)
-        })
+        votoExistente.detalles_voto.forEach(d => { nuevosPuntajes[d.id_categoria] = Number(d.puntaje) })
         setPuntajes(nuevosPuntajes)
       } else {
         const resetPuntajes = {}
@@ -89,31 +118,53 @@ function VotacionContenido() {
     setHistorialVotos(lineas || [])
   }
 
-  // FUNCIÓN PARA DESCARGAR RESULTADOS
+  // FUNCIÓN PARA DESCARGAR RESULTADOS COMPLETA (Arreglada para ancho)
   const descargarResultados = () => {
     if (tablaRef.current === null) return
     setIsDownloading(true)
 
-    toPng(tablaRef.current, { 
-      cacheBust: true, 
-      backgroundColor: '#1a1a1a',
-      style: { maxHeight: 'none', overflow: 'visible', height: 'auto' },
-      height: tablaRef.current.scrollHeight
-    })
-      .then((dataUrl) => {
-        const link = document.createElement('a')
-        link.download = `Eurovision-${edicionActiva?.tipo}-${user?.nombre}.png`
-        link.href = dataUrl
-        link.click()
-        setToastMsg("Imagen guardada 📸")
-        setShowToast(true)
-        setTimeout(() => setShowToast(false), 3000)
+    // Agregamos los estilos de impresión temporalmente al head
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = printStyles;
+    document.head.appendChild(styleSheet);
+
+    // Pequeño retraso para dejar que los estilos se apliquen antes de la captura
+    setTimeout(() => {
+      toPng(tablaRef.current, { 
+        cacheBust: true, 
+        backgroundColor: '#1a1a1a',
+        // Estilos para la captura de pantalla: aseguramos ancho completo
+        style: {
+          width: 'auto',
+          minWidth: 'auto',
+          maxWidth: 'none',
+          overflow: 'visible',
+          height: 'auto',
+          maxHeight: 'none'
+        },
+        // Aquí está el truco para que capture todo el ancho que necesita la tabla
+        width: tablaRef.current.scrollWidth, 
+        height: tablaRef.current.scrollHeight
       })
-      .catch(() => {
-        setToastMsg("Error al descargar ❌")
-        setShowToast(true)
-      })
-      .finally(() => setIsDownloading(false))
+        .then((dataUrl) => {
+          const link = document.createElement('a')
+          link.download = `Eurovision-${edicionActiva?.tipo}-${user?.nombre}.png`
+          link.href = dataUrl
+          link.click()
+          setToastMsg("Imagen guardada 📸")
+          setShowToast(true)
+          setTimeout(() => setShowToast(false), 3000)
+        })
+        .catch(() => {
+          setToastMsg("Error al descargar ❌")
+          setShowToast(true)
+        })
+        .finally(() => {
+          // Quitamos los estilos de impresión temporales
+          document.head.removeChild(styleSheet);
+          setIsDownloading(false);
+        });
+    }, 100); // 100ms es suficiente
   }
 
   const handleVotar = async () => {
@@ -121,43 +172,26 @@ function VotacionContenido() {
     const paisNombre = participantes[indiceActual]?.paises?.nombre
     const idParticipacion = participantes[indiceActual].id_participacion
     let idLinea = historialVotos.find(v => v.id_participacion === idParticipacion)?.id_linea
-
     if (!idLinea) {
-      const { data: nuevaLinea } = await supabase.from('lineas_votacion')
-        .insert([{ id_usuario: user.id_usuario, id_participacion: idParticipacion }])
-        .select().single()
+      const { data: nuevaLinea } = await supabase.from('lineas_votacion').insert([{ id_usuario: user.id_usuario, id_participacion: idParticipacion }]).select().single()
       idLinea = nuevaLinea.id_linea
     }
-
     await supabase.from('detalles_voto').delete().eq('id_linea', idLinea)
     await supabase.from('detalles_voto').insert(categorias.map(cat => ({
       id_linea: idLinea, id_categoria: cat.id_categoria, puntaje: puntajes[cat.id_categoria] || 5
     })))
-
     await cargarHistorial(user.id_usuario, participantes.map(p => p.id_participacion))
-
     setToastMsg(`Voto enviado para ${paisNombre} 🗳️`)
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
-
-    const proximoPendienteIdx = participantes.findIndex((p, idx) => {
-      return idx > indiceActual && !historialVotos.some(v => v.id_participacion === p.id_participacion)
-    })
-
-    if (proximoPendienteIdx !== -1) {
-      setIndiceActual(proximoPendienteIdx)
-    } else {
+    const proximoPendienteIdx = participantes.findIndex((p, idx) => idx > indiceActual && !historialVotos.some(v => v.id_participacion === p.id_participacion))
+    if (proximoPendienteIdx !== -1) { setIndiceActual(proximoPendienteIdx) }
+    else {
       const primeroPendiente = participantes.findIndex(p => !historialVotos.some(v => v.id_participacion === p.id_participacion))
-      if (primeroPendiente !== -1 && primeroPendiente !== indiceActual) {
-        setIndiceActual(primeroPendiente)
-      } else {
-        setToastMsg("¡Todos los países han sido votados! ✨")
-        setShowToast(true)
-      }
+      if (primeroPendiente !== -1 && primeroPendiente !== indiceActual) { setIndiceActual(primeroPendiente) }
+      else { setToastMsg("¡Todos los países han sido votados! ✨"); setShowToast(true) }
     }
   }
-
-  if (loading) return <div className="container mt-5 text-center text-white opacity-50">Cargando...</div>
 
   const participanteActual = participantes[indiceActual]
   const listaArtistas = participanteActual?.participacion_artista?.map(pa => pa.artistas?.nombre).join(', ')
@@ -189,6 +223,7 @@ function VotacionContenido() {
         </div>
       )}
 
+      {/* TARJETA DE VOTACIÓN */}
       <div className="card bg-dark text-white shadow-lg overflow-hidden border-0 mb-5">
         <div className="bg-primary p-2 text-center text-uppercase small fw-bold">
           {edicionActiva?.tipo} {edicionActiva?.anio} - {user?.nombre}
@@ -221,17 +256,26 @@ function VotacionContenido() {
         </div>
       </div>
 
-      <div className="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+      {/* CABECERA HISTORIAL + BOTÓN DESCARGAR CON SPINNER */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="text-light fw-bold mb-0">Tu Historial de Votos</h4>
         <button 
           onClick={descargarResultados} 
           disabled={isDownloading}
           className="btn btn-sm btn-success fw-bold px-3 py-2 shadow-sm d-flex align-items-center"
         >
-          {isDownloading ? 'Generando...' : 'Descargar ranking 📸'}
+          {isDownloading ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Capturando...
+            </>
+          ) : (
+            'Descargar ranking 📸'
+          )}
         </button>
       </div>
       
+      {/* REFERENCIA DE LA TABLA (AQUÍ PONEMOS EL ref) */}
       <div 
         ref={tablaRef}
         className="table-responsive shadow-sm rounded border border-secondary" 
