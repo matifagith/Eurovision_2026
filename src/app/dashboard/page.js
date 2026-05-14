@@ -16,7 +16,6 @@ export default function Dashboard() {
     setUser(storedUser)
 
     const fetchEdiciones = async () => {
-      // Traemos las ediciones y verificamos si existen votos (líneas de votación)
       const { data, error } = await supabase
         .from('ediciones')
         .select(`
@@ -43,7 +42,7 @@ export default function Dashboard() {
           <div className="row align-items-center">
             <div className="col-md-8">
               <h1 className="display-5 fw-bold mb-2 text-white">¡Hola, {user?.nombre}! 👋</h1>
-              <p className="lead mb-0 text-white opacity-90">Bienvenido al sistema oficial de votación. Elegí una gala para interactuar o ver resultados.</p>
+              <p className="lead mb-0 text-white opacity-90">Bienvenido al sistema oficial de votación.</p>
             </div>
             <div className="col-md-4 text-center d-none d-md-block text-white">
               <span style={{ fontSize: '5rem' }}>🎙️</span>
@@ -65,11 +64,9 @@ export default function Dashboard() {
           
           <div className="row g-4">
             {ediciones.filter(e => e.anio === anio).map(ed => {
-              // LÓGICA DE ACCESO: 
-              // Permitimos entrar si la votación está abierta O si es de un año anterior al actual (2026)
               const anioActual = 2026; 
-              const esPasada = ed.anio < anioActual || (ed.anio === anioActual && !ed.votacion_abierta);
-              const habilitada = ed.votacion_abierta || esPasada;
+              // La card es accesible si es un año pasado, o si es el actual (esté abierta o cerrada para votar)
+              const habilitada = ed.anio <= anioActual;
 
               return (
                 <div key={ed.id_edicion} className="col-md-4">
@@ -96,21 +93,34 @@ export default function Dashboard() {
                       </h4>
                       <p className="text-muted small text-uppercase mb-3" style={{ letterSpacing: '1px' }}>{anio}</p>
                       
-                      <div className="d-grid">
+                      <div className="d-grid gap-2">
                         {ed.votacion_abierta ? (
                           <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
-                        ) : esPasada ? (
+                        ) : habilitada ? (
                           <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
                         ) : (
                           <div className="btn btn-outline-secondary disabled fw-bold opacity-50" style={{ border: '1px solid #444' }}>
                             COMING SOON ⏳
                           </div>
                         )}
+
+                        {/* EL BOTÓN DE ESTADÍSTICAS SIEMPRE VISIBLE SI LA GALA NO ES "COMING SOON" */}
+                        {/*habilitada && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation(); // IMPORTANTE: Para que no se dispare el click de la card
+                              router.push(`/estadisticas?edicionId=${ed.id_edicion}`);
+                            }}
+                            className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                          >
+                            ESTADÍSTICAS GLOBALES 📈
+                          </button>
+                        )*/}
                       </div>
                     </div>
 
                     <div className="position-absolute top-0 end-0 p-3">
-                      <span className={`badge rounded-pill ${ed.votacion_abierta ? 'bg-success' : 'bg-danger opacity-75'}`} 
+                      <span className={`badge rounded-pill ${ed.votacion_abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
                             style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
                         {ed.votacion_abierta ? 'LIVE' : 'CLOSED'}
                       </span>
