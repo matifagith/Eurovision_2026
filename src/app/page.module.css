@@ -1,3 +1,4 @@
+/*
 .page {
   --background: #fafafa;
   --foreground: #fff;
@@ -93,8 +94,8 @@ a.primary {
 a.secondary {
   border-color: var(--button-secondary-border);
 }
-
-/* Enable hover only on non-touch devices */
+*/
+/* Enable hover only on non-touch devices 
 @media (hover: hover) and (pointer: fine) {
   a.primary:hover {
     background: var(--button-primary-hover);
@@ -139,4 +140,51 @@ a.secondary {
     --button-secondary-hover: #1a1a1a;
     --button-secondary-border: #1a1a1a;
   }
+}
+*/
+
+/* Variables Globales - Siempre modo claro */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card-bg: #f9fafb;
+  --border-color: #e5e7eb;
+  --primary-blue: #2563eb;
+  --secondary-text: #4b5563;
+}
+
+.container-custom {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 2rem;
+}
+
+.main-content {
+  max-width: 42rem;
+  margin: 0 auto;
+  background: white;
+}
+
+/* Estilizamos los inputs para que se vean bien en modo claro */
+input {
+  background-color: #fff !important;
+  color: #000 !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+input::placeholder {
+  color: #9ca3af;
+}
+
+/* Botones con estilo limpio */
+.btn-primary {
+  background-color: var(--primary-blue);
+  color: white;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
 }

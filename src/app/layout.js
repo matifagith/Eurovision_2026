@@ -16,8 +16,7 @@ export default function RootLayout({ children }) {
           <div className="container">
             <a className="navbar-brand fw-bold" href="/">Eurovision 2026 🇦🇹</a>
             <div className="d-flex">
-              <a href="/admin" className="btn btn-outline-light btn-sm me-2">Admin</a>
-              <a href="/vote" className="btn btn-warning btn-sm fw-bold text-dark">Votar</a>
+              <a href="/dashboard" className="btn btn-info btn-sm me-2 fw-bold text-dark">Lobby</a>              
             </div>
           </div>
         </nav>
