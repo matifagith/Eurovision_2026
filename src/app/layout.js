@@ -15,10 +15,12 @@ export default function RootLayout({ children }) {
       if (event === 'SIGNED_IN' && session) {
         // 1. Buscamos al usuario en nuestra tabla pública 'usuarios' usando el email
         const { data: usuario, error } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('email', session.user.email)
-          .single();
+  .from('usuarios')
+  .select('*')
+  .eq('email', session.user.email)
+  .single();
+
+if (error) console.error("Error buscando usuario en tabla pública:", error);
 
         if (usuario) {
           // 2. Sincronizamos con tu lógica de localStorage
