@@ -16,6 +16,8 @@ export default function Dashboard() {
     setUser(storedUser)
 
     const fetchEdiciones = async () => {
+      //console.log("📡 1. Iniciando petición a Supabase...");
+      
       const { data, error } = await supabase
         .from('ediciones')
         .select(`
@@ -24,12 +26,19 @@ export default function Dashboard() {
         `)
         .order('anio', { ascending: false })
 
-      if (!error) {
+      //console.log("📦 2. Datos recibidos de Supabase:", data);
+      
+      if (error) {
+        // Si hay un error, ahora lo veremos en rojo gigante
+        console.error("🚨 3. ERROR DE SUPABASE:", error);
+      } else {
         setEdiciones(data || [])
         const years = [...new Set((data || []).map(e => e.anio))]
         setAños(years)
+        //console.log("✅ 4. Años procesados y listos para renderizar:", years);
       }
     }
+    
     fetchEdiciones()
   }, [router])
 
