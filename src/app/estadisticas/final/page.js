@@ -206,7 +206,7 @@ function EstadisticasFinalContenido() {
         <h2 className="fw-bold text-info text-uppercase mb-0">
           RESULTADOS FINAL {infoEdicion.anio}
         </h2>
-        <p className="text-secondary small mt-1">Auditoría y precisión del jurado frente al consenso general</p>
+        <p className="text-secondary small mt-1">Solo para adicts a eurovision</p>
       </div>
 
       {/* PANEL DE FILTROS AVANZADOS */}
