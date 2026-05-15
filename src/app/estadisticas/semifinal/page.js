@@ -204,14 +204,33 @@ function SemiStatsContenido() {
             <tr>
               <th onClick={() => ordenarTabla('pais')} style={{cursor:'pointer'}}>País</th>
               <th onClick={() => ordenarTabla('resultado')} className="text-center" style={{cursor:'pointer'}}>Resultado</th>
-              {usuarios.map(u => (
-                <th key={u.id} className="text-center" onClick={() => ordenarTabla(u.id, true)} style={{cursor:'pointer'}}>
-                  <div>{u.nombre}</div>
-                  <div className="text-primary" style={{fontSize: '0.7rem'}}>
-                    ({u.acierto.toFixed(0)}% acierto)
-                  </div>
-                </th>
-              ))}
+              {usuarios.map(u => {
+  const estaOrdenadoPorEste = sortConfig.isUser && sortConfig.key === u.id;
+
+  return (
+    <th 
+      key={u.id} 
+      className="text-center" 
+      onClick={() => ordenarTabla(u.id, true)} 
+      style={{ cursor: 'pointer', verticalAlign: 'middle' }}
+    >
+      <div className="d-flex flex-column align-items-center">
+        <div className="d-flex align-items-center gap-1">
+          {/* Logo/Icono sutil solo si está ordenado por este usuario */}
+          {estaOrdenadoPorEste && (
+            <span className="text-warning" style={{ fontSize: '0.8rem' }}>📌</span>
+          )}
+          <span className={estaOrdenadoPorEste ? 'text-danger fw-bold' : 'text-black'}>
+            {u.nombre}
+          </span>
+        </div>
+        <div className="text-muted" style={{ fontSize: '0.65rem', fontWeight: 'normal' }}>
+          ({u.acierto.toFixed(0)}% acierto)
+        </div>
+      </div>
+    </th>
+  );
+})}
             </tr>
           </thead>
           <tbody>
@@ -236,14 +255,23 @@ function SemiStatsContenido() {
                       <span className="badge bg-danger" style={{ fontSize: '0.65rem' }}>NO PASÓ</span>
                     }
                   </td>
-                  {usuarios.map(u => (
-                    <td 
-                      key={u.id} 
-                      className={`text-center ${fila.votos[u.id] >= 7 ? 'text-warning fw-bold' : 'opacity-75'}`}
-                    >
-                      {fila.votos[u.id] > 0 ? fila.votos[u.id].toFixed(2) : '-'}
-                    </td>
-                  ))}
+                  {usuarios.map(u => {
+  const estaOrdenadoPorEste = sortConfig.isUser && sortConfig.key === u.id;
+
+  return (
+    <td 
+      key={u.id} 
+      className="text-center"
+    >
+      <span className={`
+        ${estaOrdenadoPorEste ? 'text-white fw-bold' : 'opacity-75'} 
+        ${fila.votos[u.id] >= 7 ? 'text-warning' : ''}
+      `}>
+        {fila.votos[u.id] > 0 ? fila.votos[u.id].toFixed(2) : '-'}
+      </span>
+    </td>
+  );
+})}
                 </tr>
               );
             })}
