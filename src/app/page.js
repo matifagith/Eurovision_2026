@@ -12,11 +12,14 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  // Login Tradicional (Tu lógica actual)
+// Login Tradicional
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // 🧹 LA SOLUCIÓN: Limpiar el rastro de Supabase Auth/Google antes de entrar
+    await supabase.auth.signOut()
 
     const { data: usuario, error: dbError } = await supabase
       .from('usuarios')
