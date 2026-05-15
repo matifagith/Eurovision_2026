@@ -8,13 +8,22 @@ export default function AdminLayout({ children }) {
   const router = useRouter()
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'))
+    // 1. Leemos exactamente qué hay en el localStorage al llegar a /admin
+    const userString = localStorage.getItem('user');
+    //console.log("👀 Admin Layout detectó en localStorage:", userString);
 
-    // Bloqueo total: Si no hay usuario o no es admin, fuera.
-    if (!storedUser || storedUser.es_admin !== true) {
-      router.push('/dashboard')
+    const storedUser = JSON.parse(userString);
+
+    // 2. Evaluamos paso a paso para saber dónde falla
+    if (!storedUser) {
+      console.log("🚫 No hay usuario. Redirigiendo al Login (/).");
+      router.push('/'); // Es mejor mandarlo al login que al dashboard si no hay nadie
+    } else if (storedUser.es_admin !== true) {
+      console.log("✋ Usuario normal detectado. Redirigiendo al Dashboard.");
+      router.push('/dashboard');
     } else {
-      setAutorizado(true)
+      //console.log("✅ Acceso de administrador concedido.");
+      setAutorizado(true);
     }
   }, [router])
 

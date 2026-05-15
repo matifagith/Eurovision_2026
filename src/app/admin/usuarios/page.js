@@ -37,13 +37,18 @@ export default function ABMUsuarios() {
     fetchUsuarios()
   }
 
-  const handleDelete = async (id) => {
+  // Se modificó para recibir el objeto usuario completo y validar
+  const handleDelete = async (user) => {
+    if (user.es_admin) return // Protección a nivel lógico
+    
     if (!confirm('⚠️ ¡ATENCIÓN! Si borrás este usuario se eliminarán TODOS SUS VOTOS históricos. ¿Estás seguro?')) return
-    await supabase.from('usuarios').delete().eq('id_usuario', id)
+    await supabase.from('usuarios').delete().eq('id_usuario', user.id_usuario)
     fetchUsuarios()
   }
 
   const iniciarEdicion = (user) => {
+    if (user.es_admin) return // Protección a nivel lógico
+    
     setEditandoId(user.id_usuario)
     setNombre(user.nombre)
     setContrasena(user.contrasena)
@@ -66,7 +71,8 @@ export default function ABMUsuarios() {
           </div>
           <div className="col-md-6">
             <label className="form-label small text-muted">Contraseña</label>
-            <input type="text" className="form-control" placeholder="Contraseña de acceso" value={contrasena} onChange={(e) => setContrasena(e.target.value)} required />
+            {/* Opcional: Podrías hacer que no sea requerida si usan login con Google */}
+            <input type="text" className="form-control" placeholder="Contraseña de acceso" value={contrasena || ''} onChange={(e) => setContrasena(e.target.value)} />
           </div>
         </div>
         
@@ -87,8 +93,8 @@ export default function ABMUsuarios() {
         <table className="table table-dark table-hover align-middle mb-0">
           <thead className="table-secondary text-dark">
             <tr>
-              <th scope="col">ID</th>
               <th scope="col">Nombre</th>
+              <th scope="col">Correo</th>
               <th scope="col">Contraseña</th>
               <th scope="col">Rol</th>
               <th scope="col" className="text-end">Acciones</th>
@@ -97,15 +103,32 @@ export default function ABMUsuarios() {
           <tbody>
             {usuarios.map(user => (
               <tr key={user.id_usuario}>
-                <th scope="row" className="text-muted">{user.id_usuario}</th>
                 <td className="fw-bold text-light">{user.nombre}</td>
-                <td><span className="badge bg-secondary font-monospace">{user.contrasena}</span></td>
+                <td className="fw-bold text-light">{user.email || '-'}</td>
+                <td>
+  <span className="badge bg-secondary font-monospace">
+    {user.es_admin ? '*****' : (user.contrasena || 'Google Auth')}
+  </span>
+</td>
                 <td>
                   {user.es_admin ? <span className="badge bg-warning text-dark">Admin</span> : <span className="badge bg-info text-dark">Juez</span>}
                 </td>
                 <td className="text-end">
-                  <button onClick={() => iniciarEdicion(user)} className="btn btn-sm btn-outline-info me-2">Editar</button>
-                  <button onClick={() => handleDelete(user.id_usuario)} className="btn btn-sm btn-outline-danger">Borrar</button>
+                  {/* Se agregó la propiedad disabled y se pasa el objeto user completo a handleDelete */}
+                  <button 
+                    onClick={() => iniciarEdicion(user)} 
+                    className="btn btn-sm btn-outline-info me-2"
+                    disabled={user.es_admin}
+                  >
+                    Editar
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(user)} 
+                    className="btn btn-sm btn-outline-danger"
+                    disabled={user.es_admin}
+                  >
+                    Borrar
+                  </button>
                 </td>
               </tr>
             ))}
