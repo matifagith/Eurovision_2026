@@ -14,7 +14,7 @@ export default function ABMUsuarios() {
 
   const fetchUsuarios = async () => {
     setLoading(true)
-    const { data } = await supabase.from('usuarios').select('*').order('id_usuario', { ascending: true })
+    const { data } = await supabase.from('usuarios_seguros').select('*').order('id_usuario', { ascending: true })
     setUsuarios(data || [])
     setLoading(false)
   }
