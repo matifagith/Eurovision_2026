@@ -7,10 +7,12 @@ import { useRouter } from 'next/navigation'
 export default function LandingPage() {
   const [nombre, setNombre] = useState('')
   const [contrasena, setContrasena] = useState('')
+  const [verContrasena, setVerContrasena] = useState(false)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
+  // Login Tradicional (Tu lógica actual)
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -27,55 +29,88 @@ export default function LandingPage() {
       setError('Usuario o contraseña incorrectos ❌')
       setLoading(false)
     } else {
-      // Guardamos al usuario en el navegador para usar su ID después
       localStorage.setItem('user', JSON.stringify(usuario))
-      
-      if (usuario.es_admin) {
-        router.push('/admin')
-      } else {
-        router.push('/dashboard')
-      }
+      usuario.es_admin ? router.push('/admin') : router.push('/dashboard')
     }
   }
 
+  // Login con Google (Modularizado)
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard` 
+      }
+    })
+    if (error) setError('Error al conectar con Google ❌')
+  }
+
   return (
-    <main className="container d-flex flex-column align-items-center justify-content-center min-vh-100">
+    <main className="container d-flex flex-column align-items-center justify-content-center min-vh-100 font-sans">
       <div className="text-center mb-5">
         <h1 className="display-2 fw-bold text-primary">Eurovision vote app</h1>
-        <p className="lead text-secondary">Iniciá sesión para evaluar las presentaciones en vivo</p>
+        <p className="lead text-secondary opacity-75">Iniciá sesión para evaluar las presentaciones en vivo</p>
       </div>
 
-      <div className="card shadow-lg p-4 bg-dark text-white" style={{ maxWidth: '400px', width: '100%' }}>
+      <div className="card shadow-lg p-4 bg-dark text-white border-secondary" style={{ maxWidth: '400px', width: '100%', borderRadius: '15px' }}>
         <form onSubmit={handleLogin}>
           <div className="mb-3">
-            <label className="form-label">Nombre de Usuario</label>
+            <label className="form-label small fw-bold">NOMBRE DE USUARIO</label>
             <input 
               type="text" 
-              className="form-control" 
+              className="form-control bg-black text-white border-secondary shadow-none" 
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
             />
           </div>
+          
           <div className="mb-3">
-            <label className="form-label">Contraseña</label>
-            <input 
-              type="password" 
-              className="form-control" 
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              required
-            />
+            <label className="form-label small fw-bold">CONTRASEÑA</label>
+            <div className="input-group">
+              <input 
+                type={verContrasena ? "text" : "password"} 
+                className="form-control bg-black text-white border-secondary shadow-none" 
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                required
+              />
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary border-secondary"
+                onClick={() => setVerContrasena(!verContrasena)}
+              >
+                {verContrasena ? '👁️' : '🙈'}
+              </button>
+            </div>
           </div>
-          {error && <p className="text-danger small mb-3">{error}</p>}
+
+          <div className="d-flex justify-content-end mb-3">
+            <button type="button" onClick={() => alert("Función en desarrollo: Contactá al admin para resetear pass")} className="btn btn-link btn-sm text-secondary text-decoration-none p-0">
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+
+          {error && <p className="text-danger small mb-3 text-center">{error}</p>}
+
           <button 
             type="submit" 
-            className="btn btn-primary w-100 fw-bold py-2"
+            className="btn btn-primary w-100 fw-bold py-2 shadow-sm"
             disabled={loading}
           >
             {loading ? 'Verificando...' : 'Entrar'}
           </button>
         </form>
+
+        <div className="text-center my-3 opacity-50 small">O CONTINUAR CON</div>
+
+        <button 
+          onClick={handleGoogleLogin}
+          className="btn btn-outline-light w-100 fw-bold d-flex align-items-center justify-content-center gap-2 border-secondary py-2"
+        >
+          <img src="https://www.google.com/favicon.ico" alt="google" width="16" />
+          Google
+        </button>
       </div>
     </main>
   )
