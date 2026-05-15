@@ -104,7 +104,8 @@ export default function LandingPage() {
             {loading ? 'Verificando...' : 'Entrar'}
           </button>
         </form>
-
+        {/*
+        DESCOMENTAR ESTO PARA VISUALIZAR AUTH GOOGLE EN LANDING PAGE
         <div className="text-center my-3 opacity-50 small">O CONTINUAR CON</div>
 
         <button 
@@ -114,6 +115,7 @@ export default function LandingPage() {
           <img src="https://www.google.com/favicon.ico" alt="google" width="16" />
           Google
         </button>
+        */}
       </div>
     </main>
   )
