@@ -1,18 +1,36 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { toPng } from 'html-to-image'
+
+// Estilos de impresión para forzar que la tabla se vea completa en la captura
+const printStyles = `
+  @media print {
+    body, main, .table-responsive {
+      width: 100% !important;
+      overflow: visible !important;
+      max-height: none !important;
+    }
+    table {
+      table-layout: auto !important;
+      width: 100% !important;
+    }
+  }
+`;
 
 function SemiStatsContenido() {
   const searchParams = useSearchParams()
   const edicionId = searchParams.get('edicionId')
+  const tablaRef = useRef(null)
 
-  const [datos, setDatos] = useState([]) // Filas de la tabla (países + promedios)
-  const [usuarios, setUsuarios] = useState([]) // Cabeceras dinámicas (usuarios)
+  const [datos, setDatos] = useState([])
+  const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
-  const [infoEdicion, setInfoEdicion] = useState({ tipo: '', anio: '' });
+  const [infoEdicion, setInfoEdicion] = useState({ tipo: '', anio: '' })
   const [sortConfig, setSortConfig] = useState({ key: 'resultado', direction: 'desc' })
+  const [isDownloading, setIsDownloading] = useState(false)
 
   useEffect(() => {
     if (edicionId) fetchEstadisticas()
@@ -21,24 +39,21 @@ function SemiStatsContenido() {
   const fetchEstadisticas = async () => {
     setLoading(true)
 
-    // NUEVO: Obtener info de la edición (Tipo y Año)
-  const { data: edicion } = await supabase
-    .from('ediciones')
-    .select('tipo, anio')
-    .eq('id_edicion', edicionId)
-    .single();
+    const { data: edicion } = await supabase
+      .from('ediciones')
+      .select('tipo, anio')
+      .eq('id_edicion', edicionId)
+      .single()
 
-  if (edicion) {
-    setInfoEdicion({ tipo: edicion.tipo, anio: edicion.anio });
-  }
+    if (edicion) {
+      setInfoEdicion({ tipo: edicion.tipo, anio: edicion.anio })
+    }
 
-    // 1. Traer participaciones de esta edición (Países y si clasificaron)
     const { data: participaciones } = await supabase
       .from('participaciones')
       .select('id_participacion, clasifico, paises(nombre)')
       .eq('id_edicion', edicionId)
 
-    // 2. Traer todos los votos de esta edición con nombres de usuarios
     const { data: votos } = await supabase
       .from('lineas_votacion')
       .select(`
@@ -49,7 +64,6 @@ function SemiStatsContenido() {
       `)
       .in('id_participacion', participaciones.map(p => p.id_participacion))
 
-    // 3. Procesar Usuarios Únicos y sus Aciertos
     const mapaUsuarios = {}
     votos.forEach(v => {
       if (!mapaUsuarios[v.id_usuario]) {
@@ -60,29 +74,24 @@ function SemiStatsContenido() {
           acierto: 0 
         }
       }
-      // Calcular promedio del usuario para este país
       const total = v.detalles_voto.reduce((acc, curr) => acc + Number(curr.puntaje), 0)
       const promedio = total / v.detalles_voto.length
       mapaUsuarios[v.id_usuario].votosPorPais[v.id_participacion] = promedio
     })
 
     const listaUsuarios = Object.values(mapaUsuarios)
-
-    // 4. Calcular % de Acierto para cada usuario
     const idsClasificadosReales = participaciones.filter(p => p.clasifico).map(p => p.id_participacion)
     
     listaUsuarios.forEach(u => {
-      // Obtenemos su Top 10 basado en sus promedios
       const top10Usuario = Object.entries(u.votosPorPais)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(entry => Number(entry[0]))
 
       const coincidencias = top10Usuario.filter(id => idsClasificadosReales.includes(id)).length
-      u.acierto = (coincidencias / idsClasificadosReales.length) * 100
+      u.acierto = idsClasificadosReales.length > 0 ? (coincidencias / idsClasificadosReales.length) * 100 : 0
     })
 
-    // 5. Construir filas de la tabla
     const filas = participaciones.map(p => {
       const fila = {
         id_participacion: p.id_participacion,
@@ -101,7 +110,46 @@ function SemiStatsContenido() {
     setLoading(false)
   }
 
-  // Lógica de ordenamiento
+  const descargarEstadisticas = () => {
+    if (tablaRef.current === null) return
+    setIsDownloading(true)
+
+    const styleSheet = document.createElement("style")
+    styleSheet.innerText = printStyles
+    document.head.appendChild(styleSheet)
+
+    setTimeout(() => {
+      toPng(tablaRef.current, { 
+        cacheBust: true, 
+        backgroundColor: '#1a1a1a',
+        style: {
+          width: 'auto',
+          minWidth: 'auto',
+          maxWidth: 'none',
+          overflow: 'visible',
+          height: 'auto',
+          maxHeight: 'none'
+        },
+        width: tablaRef.current.scrollWidth, 
+        height: tablaRef.current.scrollHeight
+      })
+        .then((dataUrl) => {
+          const link = document.createElement('a')
+          // Formato solicitado: Estadisticas_globales-Eurovision-anio-tipo
+          link.download = `Estadisticas_globales-Eurovision-${infoEdicion.anio}-${infoEdicion.tipo}.png`
+          link.href = dataUrl
+          link.click()
+        })
+        .catch((err) => {
+          console.error("Error al descargar", err)
+        })
+        .finally(() => {
+          document.head.removeChild(styleSheet)
+          setIsDownloading(false)
+        })
+    }, 100)
+  }
+
   const ordenarTabla = (key, isUser = false) => {
     let direction = 'desc'
     if (sortConfig.key === key && sortConfig.direction === 'desc') direction = 'asc'
@@ -117,7 +165,6 @@ function SemiStatsContenido() {
       valA = a[sortConfig.key]
       valB = b[sortConfig.key]
     }
-
     if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
     if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
     return 0
@@ -127,10 +174,31 @@ function SemiStatsContenido() {
 
   return (
     <main className="container-fluid mt-4 px-4 text-white font-sans">
-      <h2 className="fw-bold mb-4 text-info text-uppercase" style={{ letterSpacing: '1px' }}>
-  Estadísticas Globales - {infoEdicion.tipo} - {infoEdicion.anio}
-</h2>
-      <div className="table-responsive shadow-lg rounded border border-secondary">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold mb-0 text-info text-uppercase" style={{ letterSpacing: '1px' }}>
+          Estadísticas Globales - {infoEdicion.tipo} - {infoEdicion.anio}
+        </h2>
+        <button 
+          onClick={descargarEstadisticas} 
+          disabled={isDownloading}
+          className="btn btn-sm btn-success fw-bold px-3 py-2 shadow-sm d-flex align-items-center"
+        >
+          {isDownloading ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+              Capturando...
+            </>
+          ) : (
+            'Descargar estadísticas 📸'
+          )}
+        </button>
+      </div>
+
+      <div 
+        ref={tablaRef}
+        className="table-responsive shadow-lg rounded border border-secondary"
+        style={{ backgroundColor: '#1a1a1a' }}
+      >
         <table className="table table-dark table-hover align-middle mb-0">
           <thead className="table-secondary text-dark text-uppercase small fw-bold">
             <tr>
@@ -146,45 +214,40 @@ function SemiStatsContenido() {
               ))}
             </tr>
           </thead>
-         {/* ... dentro del tbody de tu tabla ... */}
-            <tbody>
+          <tbody>
             {datosOrdenados.map((fila, idx) => {
-                // Determinamos si la fila actual pertenece al Top 10 del ordenamiento vigente
-                const esTop10 = idx < 10;
-
-                return (
+              const esTop10 = idx < 10;
+              return (
                 <tr 
-                    key={fila.id_participacion}
-                    style={{
-                    // Aplicamos un borde izquierdo grueso y color de fondo sutil para resaltar el Top 10
+                  key={fila.id_participacion}
+                  style={{
                     borderLeft: esTop10 ? '5px solid #ffc107' : '5px solid transparent',
                     backgroundColor: esTop10 ? 'rgba(255, 193, 7, 0.05)' : 'transparent',
                     transition: 'all 0.2s ease'
-                    }}
+                  }}
                 >
-                    <td className={`ps-3 ${esTop10 ? 'fw-bold text-warning' : ''}`}>
-                    {/* Mostramos el número de ranking al lado del nombre */}
+                  <td className={`ps-3 ${esTop10 ? 'fw-bold text-warning' : ''}`}>
                     <span className="opacity-50 me-2" style={{ fontSize: '0.8rem' }}>{idx + 1}.</span>
                     {fila.pais}
-                    </td>
-                    <td className="text-center">
+                  </td>
+                  <td className="text-center">
                     {fila.resultado ? 
-                        <span className="badge bg-success" style={{ fontSize: '0.65rem' }}>CLASIFICÓ</span> : 
-                        <span className="badge bg-danger" style={{ fontSize: '0.65rem' }}>NO PASÓ</span>
+                      <span className="badge bg-success" style={{ fontSize: '0.65rem' }}>CLASIFICÓ</span> : 
+                      <span className="badge bg-danger" style={{ fontSize: '0.65rem' }}>NO PASÓ</span>
                     }
-                    </td>
-                    {usuarios.map(u => (
+                  </td>
+                  {usuarios.map(u => (
                     <td 
-                        key={u.id} 
-                        className={`text-center ${fila.votos[u.id] >= 7 ? 'text-warning fw-bold' : 'opacity-75'}`}
+                      key={u.id} 
+                      className={`text-center ${fila.votos[u.id] >= 7 ? 'text-warning fw-bold' : 'opacity-75'}`}
                     >
-                        {fila.votos[u.id] > 0 ? fila.votos[u.id].toFixed(2) : '-'}
+                      {fila.votos[u.id] > 0 ? fila.votos[u.id].toFixed(2) : '-'}
                     </td>
-                    ))}
+                  ))}
                 </tr>
-                );
+              );
             })}
-            </tbody>
+          </tbody>
         </table>
       </div>
     </main>
