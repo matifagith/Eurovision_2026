@@ -66,11 +66,11 @@ export default function ABMUsuarios() {
         <h5 className="mb-3 text-info">{editandoId ? 'Editando Usuario' : 'Nuevo Usuario'}</h5>
         <div className="row g-2 mb-3">
           <div className="col-md-6">
-            <label className="form-label small text-muted">Nombre</label>
+            <label className="form-label small text-white">Nombre</label>
             <input type="text" className="form-control" placeholder="Ej: Matias" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
           </div>
           <div className="col-md-6">
-            <label className="form-label small text-muted">Contraseña</label>
+            <label className="form-label small text-white">Contraseña</label>
             {/* Opcional: Podrías hacer que no sea requerida si usan login con Google */}
             <input type="text" className="form-control" placeholder="Contraseña de acceso" value={contrasena || ''} onChange={(e) => setContrasena(e.target.value)} />
           </div>
