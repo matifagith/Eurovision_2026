@@ -292,7 +292,7 @@ function VotacionContenido() {
               ))}
               <th className="text-center bg-warning text-dark" style={{ top: 0 }}>Promedio</th>
               <th className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>Estado</th>
-              <th className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>Resultado</th>
+              <th className="text-center" style={{ backgroundColor: '#adb5bd', top: 0 }}>Clasifica</th>
             </tr>
           </thead>
           <tbody>
