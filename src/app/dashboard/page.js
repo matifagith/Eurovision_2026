@@ -8,6 +8,8 @@ export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [ediciones, setEdiciones] = useState([])
   const [años, setAños] = useState([])
+  // 1. AGREGAMOS EL ESTADO DE CARGA (Por defecto en true)
+  const [cargando, setCargando] = useState(true) 
   const router = useRouter()
 
   useEffect(() => {
@@ -16,7 +18,8 @@ export default function Dashboard() {
     setUser(storedUser)
 
     const fetchEdiciones = async () => {
-      //console.log("📡 1. Iniciando petición a Supabase...");
+      // Nos aseguramos de que el spinner esté activo al empezar
+      setCargando(true) 
       
       const { data, error } = await supabase
         .from('ediciones')
@@ -26,17 +29,16 @@ export default function Dashboard() {
         `)
         .order('anio', { ascending: false })
 
-      //console.log("📦 2. Datos recibidos de Supabase:", data);
-      
-      if (error) {
-        // Si hay un error, ahora lo veremos en rojo gigante
-        console.error("🚨 3. ERROR DE SUPABASE:", error);
-      } else {
+      if (!error) {
         setEdiciones(data || [])
         const years = [...new Set((data || []).map(e => e.anio))]
         setAños(years)
-        //console.log("✅ 4. Años procesados y listos para renderizar:", years);
+      } else {
+        console.error("Error cargando galas:", error)
       }
+      
+      // 2. APAGAMOS EL SPINNER CUANDO LLEGAN LOS DATOS
+      setCargando(false) 
     }
     
     fetchEdiciones()
@@ -44,7 +46,7 @@ export default function Dashboard() {
 
   return (
     <main className="container mt-5 pb-5 font-sans text-white">
-      {/* SECCIÓN DE BIENVENIDA */}
+      {/* SECCIÓN DE BIENVENIDA (Esta carga casi instantáneo porque lee del localStorage) */}
       <div className="card border-0 shadow-lg overflow-hidden mb-5" 
            style={{ background: '#0d6efd', borderRadius: '20px' }}>
         <div className="card-body p-5 text-white text-start">
@@ -65,91 +67,96 @@ export default function Dashboard() {
         <div className="flex-grow-1 border-bottom border-secondary opacity-25"></div>
       </div>
 
-      {años.map(anio => (
-        <section key={anio} className="mb-5">
-          <div className="d-flex align-items-center mb-3">
-            <span className="badge bg-primary px-3 py-2 rounded-pill me-2 shadow-sm">Año {anio}</span>
+      {/* 3. CONDICIONAL DE RENDERIZADO: Si está cargando, mostramos el spinner */}
+      {cargando ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status">
+            <span className="visually-hidden">Cargando galas...</span>
           </div>
-          
-          <div className="row g-4">
-            {ediciones.filter(e => e.anio === anio).map(ed => {
-              // LÓGICA DE ESTADOS BASADA EN edicion_lista
-              const estaLista = ed.edicion_lista; // Atributo nuevo
-              const abierta = ed.votacion_abierta;
+          <p className="text-muted fw-bold tracking-widest">Sincronizando con Supabase Auth...</p>
+        </div>
+      ) : años.length === 0 ? (
+        // Mensaje por si no hay galas en la base de datos
+        <div className="text-center py-5 text-muted">
+          <h4>Aún no hay galas disponibles.</h4>
+        </div>
+      ) : (
+        // 4. SI YA CARGÓ, MOSTRAMOS LAS TARJETAS
+        años.map(anio => (
+          <section key={anio} className="mb-5">
+            <div className="d-flex align-items-center mb-3">
+              <span className="badge bg-primary px-3 py-2 rounded-pill me-2 shadow-sm">Año {anio}</span>
+            </div>
+            
+            <div className="row g-4">
+              {ediciones.filter(e => e.anio === anio).map(ed => {
+                const estaLista = ed.edicion_lista;
+                const abierta = ed.votacion_abierta;
 
-              return (
-                <div key={ed.id_edicion} className="col-md-4">
-                  <div 
-                    onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
-                    className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
-                    style={{ 
-                      cursor: estaLista ? 'pointer' : 'default', 
-                      borderRadius: '15px', 
-                      transition: 'all 0.3s ease' 
-                    }}
-                  >
-                    <div className="card-body p-4 text-center">
-                      <div className="mb-3">
-                        {ed.tipo.toLowerCase().includes('final') ? (
-                          <span style={{ fontSize: '2.5rem' }}>🏆</span>
-                        ) : (
-                          <span style={{ fontSize: '2.5rem' }}>✨</span>
-                        )}
+                return (
+                  <div key={ed.id_edicion} className="col-md-4">
+                    {/* TU CÓDIGO DE LA TARJETA (Queda exactamente igual) */}
+                    <div 
+                      onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
+                      className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
+                      style={{ cursor: estaLista ? 'pointer' : 'default', borderRadius: '15px', transition: 'all 0.3s ease' }}
+                    >
+                      <div className="card-body p-4 text-center">
+                        <div className="mb-3">
+                          {ed.tipo.toLowerCase().includes('final') ? (
+                            <span style={{ fontSize: '2.5rem' }}>🏆</span>
+                          ) : (
+                            <span style={{ fontSize: '2.5rem' }}>✨</span>
+                          )}
+                        </div>
+                        
+                        <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
+                          {ed.tipo}
+                        </h4>
+                        <p className="text-muted small text-uppercase mb-3" style={{ letterSpacing: '1px' }}>{anio}</p>
+                        
+                        <div className="d-grid gap-2">
+                          {!estaLista ? (
+                            <div className="btn btn-outline-secondary disabled fw-bold opacity-50" style={{ border: '1px solid #444' }}>
+                              COMING SOON ⏳
+                            </div>
+                          ) : abierta ? (
+                            <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
+                          ) : (
+                            <>
+                              <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation(); 
+                                  const esSemi = ed.tipo.toLowerCase().includes('semi');
+                                  const ruta = esSemi ? 'semifinal' : 'final';
+                                  router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
+                                }}
+                                className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                              >
+                                ESTADÍSTICA GLOBAL 📈
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      
-                      <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
-                        {ed.tipo}
-                      </h4>
-                      <p className="text-muted small text-uppercase mb-3" style={{ letterSpacing: '1px' }}>{anio}</p>
-                      
-                      <div className="d-grid gap-2">
-                        {!estaLista ? (
-                          /* CASO 1: LA EDICIÓN NO ESTÁ LISTA */
-                          <div className="btn btn-outline-secondary disabled fw-bold opacity-50" style={{ border: '1px solid #444' }}>
-                            COMING SOON ⏳
-                          </div>
-                        ) : abierta ? (
-                          /* CASO 2: LISTA Y ABIERTA */
-                          <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
-                        ) : (
-                          /* CASO 3: LISTA PERO CERRADA */
-                          <>
-                            <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
-                           
 
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation(); 
-                              // Lógica de redirección condicional
-                              const esSemi = ed.tipo.toLowerCase().includes('semi');
-                              const ruta = esSemi ? 'semifinal' : 'final';
-                              router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
-                            }}
-                            className="btn btn-info fw-bold text-white shadow-sm mt-1"
-                          >
-                            ESTADÍSTICA GLOBAL 📈
-                          </button>
-                          </>
-                        )}
-                      </div>
+                      {estaLista && (
+                        <div className="position-absolute top-0 end-0 p-3">
+                          <span className={`badge rounded-pill ${abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
+                                style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
+                            {abierta ? 'LIVE' : 'CLOSED'}
+                          </span>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Badge de estado (solo visible si está lista) */}
-                    {estaLista && (
-                      <div className="position-absolute top-0 end-0 p-3">
-                        <span className={`badge rounded-pill ${abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
-                              style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
-                          {abierta ? 'LIVE' : 'CLOSED'}
-                        </span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+                );
+              })}
+            </div>
+          </section>
+        ))
+      )}
 
       <style jsx>{`
         .btn-hover-effect:hover {
