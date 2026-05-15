@@ -106,16 +106,20 @@ export default function Dashboard() {
                           /* CASO 3: LISTA PERO CERRADA */
                           <>
                             <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation(); 
-                                // Por ahora no redirige, como pediste
-                                console.log("Redirigiendo a estadísticas de la edición:", ed.id_edicion);
-                              }}
-                              className="btn btn-info fw-bold text-white shadow-sm mt-1"
-                            >
-                              ESTADÍSTICA GLOBAL 📈
-                            </button>
+                           
+
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              // Lógica de redirección condicional
+                              const esSemi = ed.tipo.toLowerCase().includes('semi');
+                              const ruta = esSemi ? 'semifinal' : 'final';
+                              router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
+                            }}
+                            className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                          >
+                            ESTADÍSTICA GLOBAL 📈
+                          </button>
                           </>
                         )}
                       </div>

@@ -88,6 +88,18 @@ export default function AdminPage() {
                   <Link href={`/admin/ediciones/${edicion.id_edicion}`} className="btn btn-dark border-secondary fw-bold">
                     Categorías a evaluar 📋
                   </Link>
+
+                  {/* ... dentro del map de ediciones en admin/page.js ... */}
+                <div className="d-grid gap-2">
+                  {/* Botones anteriores (Habilitar Edición, Votación, etc.) */}
+                  
+                  <Link 
+                    href={`/admin/votos?edicionId=${edicion.id_edicion}`} 
+                    className="btn btn-outline-info fw-bold shadow-sm"
+                  >
+                    Ver Votos 🗳️
+                  </Link>  
+</div>
                 </div>
               </div>
             </div>
