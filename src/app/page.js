@@ -89,7 +89,7 @@ export default function LandingPage() {
           </div>
 
           <div className="d-flex justify-content-end mb-3">
-            <button type="button" onClick={() => alert("Función en desarrollo: Contactá al admin para resetear pass")} className="btn btn-link btn-sm text-secondary text-decoration-none p-0">
+            <button type="button" onClick={() => alert("Uf que pena: hablar con mauro.")} className="btn btn-link btn-sm text-secondary text-decoration-none p-0">
               ¿Olvidaste tu contraseña?
             </button>
           </div>
