@@ -33,7 +33,7 @@ export default function Navbar() {
           
           {/* LOGO CON HOVER */}
           <Link href={user ? "/dashboard" : "/"} className="navbar-brand fw-bold d-flex align-items-center brand-hover text-white m-0">
-            EUROVISION <span className="text-primary ms-1">contest</span>
+            EUROVISION <span className="text-primary ms-1">vote</span>
           </Link>
 
           {mostrarControles && (
