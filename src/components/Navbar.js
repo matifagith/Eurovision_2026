@@ -38,8 +38,19 @@ export default function Navbar() {
 
           {mostrarControles && (
             <>
-              {/* --- MENÚ DE ESCRITORIO (Oculto en celulares) --- */}
+              {/* --- MENÚ DE ESCRITORIO --- */}
               <div className="d-none d-md-flex align-items-center gap-3">
+                {/* Botón condicional de PANEL (Solo para administradores) */}
+                {user?.es_admin && (
+                  <Link 
+                    href="/admin" 
+                    className={`btn btn-sm fw-bold text-white px-4 py-2 rounded-pill d-inline-flex align-items-center btn-custom-nav ${pathname.startsWith('/admin') ? 'active' : ''}`}
+                    style={{ fontSize: '0.75rem', letterSpacing: '1px' }}
+                  >
+                    PANEL
+                  </Link>
+                )}
+
                 <Link 
                   href="/dashboard" 
                   className={`btn btn-sm fw-bold text-white px-4 py-2 rounded-pill d-inline-flex align-items-center btn-custom-nav ${pathname === '/dashboard' ? 'active' : ''}`}
@@ -65,7 +76,7 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* --- BOTÓN HAMBURGUESA PARA CELULARES (Oculto en escritorio) --- */}
+              {/* --- BOTÓN HAMBURGUESA PARA CELULARES --- */}
               <button 
                 className="btn d-md-none text-white shadow-none border-0 p-0" 
                 onClick={() => setMenuAbierto(true)}
@@ -81,13 +92,11 @@ export default function Navbar() {
       {/* --- SIDEBAR MÓVIL Y FONDO OSCURO --- */}
       {mostrarControles && (
         <>
-          {/* Fondo oscuro con blur al abrir el menú */}
           <div 
             className={`sidebar-overlay ${menuAbierto ? 'open' : ''}`} 
             onClick={cerrarMenu}
           ></div>
 
-          {/* Panel Lateral */}
           <div className={`custom-sidebar bg-dark border-start border-secondary shadow-lg d-flex flex-column ${menuAbierto ? 'open' : ''}`}>
             
             <div className="d-flex justify-content-between align-items-center p-4 border-bottom border-secondary">
@@ -98,6 +107,18 @@ export default function Navbar() {
             </div>
             
             <div className="d-flex flex-column p-4 gap-3 flex-grow-1">
+              {/* Botón condicional de PANEL en celular */}
+              {user?.es_admin && (
+                <Link 
+                  href="/admin" 
+                  onClick={cerrarMenu}
+                  className={`btn fw-bold text-white py-3 rounded-pill btn-custom-nav ${pathname.startsWith('/admin') ? 'active' : ''}`}
+                  style={{ letterSpacing: '1px' }}
+                >
+                  PANEL
+                </Link>
+              )}
+
               <Link 
                 href="/dashboard" 
                 onClick={cerrarMenu}
@@ -116,7 +137,6 @@ export default function Navbar() {
                 MI PERFIL
               </Link>
               
-              {/* CAMBIO AQUÍ: Cambiamos mt-auto por mt-4 */}
               <div className="mt-4 pt-4 border-top border-secondary">
                 <button 
                   onClick={handleLogout}
