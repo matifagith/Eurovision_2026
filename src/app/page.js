@@ -52,7 +52,7 @@ export default function LandingPage() {
     <main className="container d-flex flex-column align-items-center justify-content-center min-vh-100 font-sans">
       <div className="text-center mb-5">
         <h1 className="display-2 fw-bold text-primary">Eurovision vote app</h1>
-        <p className="lead text-secondary opacity-75">Iniciá sesión para evaluar las presentaciones en vivo</p>
+        <p className="lead text-secondary opacity-75">Iniciá sesión para evaluar las presentaciones</p>
       </div>
 
       <div className="card shadow-lg p-4 bg-dark text-white border-secondary" style={{ maxWidth: '400px', width: '100%', borderRadius: '15px' }}>
