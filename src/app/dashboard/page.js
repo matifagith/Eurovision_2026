@@ -108,7 +108,7 @@ export default function Dashboard() {
                 ¡Hola, {user?.nombre}! <span className="fs-3 ms-2">👋</span>
               </h1>
               <p className="lead mb-0 text-white-50 fw-light">
-                Bienvenido al sistema oficial de auditoría y votación en vivo.
+                Bienvenido al sistema de votación para adictas a EV en vivo.
               </p>
             </div>
             <div className="col-md-3 text-end d-none d-md-flex justify-content-end">
@@ -246,7 +246,7 @@ export default function Dashboard() {
                                     const ruta = esSemi ? 'semifinal' : 'final';
                                     router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
                                   }}
-                                  className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                                  className="btn btn-outline-light fw-bold opacity-75"
                                 >
                                   ESTADÍSTICA GLOBAL 📈
                                 </button>
