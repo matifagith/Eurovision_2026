@@ -9,6 +9,7 @@ export default function ABMEdiciones() {
   const [tipo, setTipo] = useState('Final'); 
   const [urlVideo, setUrlVideo] = useState('');
   const [fechaGala, setFechaGala] = useState('');
+  const [paisHost, setPaisHost] = useState(''); // Nuevo estado para el país organizador
   const [editId, setEditId] = useState(null);
 
   const [filtroAnio, setFiltroAnio] = useState('');
@@ -22,24 +23,22 @@ export default function ABMEdiciones() {
   
   useEffect(() => { fetchItems() }, [])
 
-  // HELPER 1: Convertir de UTC a Local (para cuando tocás el botón Editar)
   const formatearParaInput = (fechaISO) => {
     if (!fechaISO) return '';
     const d = new Date(fechaISO);
-    // Restamos el offset de tu zona horaria para que el input type="datetime-local" lo lea bien
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
 
   const save = async (e) => {
     e.preventDefault()
     
-    // HELPER 2: Convertir de Local a UTC (para guardar en la BD)
     let fechaGuardar = null;
     if (fechaGala) {
       fechaGuardar = new Date(fechaGala).toISOString();
     }
 
-    const payload = { anio, tipo, url_video: urlVideo, fecha_gala: fechaGuardar };
+    // Incluimos pais_host en el envío de datos
+    const payload = { anio, tipo, url_video: urlVideo, fecha_gala: fechaGuardar, pais_host: paisHost };
     
     if (editId) {
       await supabase.from('ediciones').update(payload).eq('id_edicion', editId)
@@ -47,11 +46,13 @@ export default function ABMEdiciones() {
       await supabase.from('ediciones').insert([{ ...payload, votacion_abierta: false, edicion_lista: false }])
     }
     
+    // Limpiamos todo el formulario
     setEditId(null); 
     setAnio(2026); 
     setTipo('Final'); 
     setUrlVideo('');
     setFechaGala('');
+    setPaisHost('');
     fetchItems();
   }
 
@@ -60,8 +61,8 @@ export default function ABMEdiciones() {
     setAnio(i.anio);
     setTipo(i.tipo);
     setUrlVideo(i.url_video || '');
-    // Usamos el helper para que la caja de edición muestre la hora correcta (ej: 19:00)
     setFechaGala(formatearParaInput(i.fecha_gala));
+    setPaisHost(i.pais_host || ''); // Cargamos el valor al editar
   }
 
   const aniosUnicos = [...new Set(items.map(i => i.anio))].sort((a, b) => b - a);
@@ -98,6 +99,7 @@ export default function ABMEdiciones() {
         <Link href="/admin" className="btn btn-outline-light">Volver al panel</Link>
       </div>
 
+      {/* FORMULARIO */}
       <form onSubmit={save} className="card bg-dark p-4 mb-4 border-success shadow text-white" style={{ borderRadius: '15px' }}>
         <h6 className="text-success fw-bold mb-3">{editId ? '✏️ Editando Edición' : '➕ Nueva Edición'}</h6>
         <div className="row g-3">
@@ -114,20 +116,25 @@ export default function ABMEdiciones() {
             </select>
           </div>
           <div className="col-md-3">
-            <label className="small text-secondary fw-bold">Fecha y Hora (Gala)</label>
-            <input type="datetime-local" className="form-control bg-black text-white border-secondary shadow-none" value={fechaGala} onChange={e => setFechaGala(e.target.value)} />
+            <label className="small text-secondary fw-bold">País Organizador (Host)</label>
+            <input type="text" className="form-control bg-black text-white border-secondary" placeholder="Ej: Suecia, Italia..." value={paisHost} onChange={e => setPaisHost(e.target.value)} />
           </div>
           <div className="col-md-5">
+            <label className="small text-secondary fw-bold">Fecha y Hora (Gala Local)</label>
+            <input type="datetime-local" className="form-control bg-black text-white border-secondary shadow-none" value={fechaGala} onChange={e => setFechaGala(e.target.value)} />
+          </div>
+          <div className="col-md-12">
             <label className="small text-secondary fw-bold">URL del Video (YouTube)</label>
             <input type="url" className="form-control bg-black text-white border-secondary" placeholder="https://youtu.be/..." value={urlVideo} onChange={e => setUrlVideo(e.target.value)} />
           </div>
         </div>
         <div className="d-flex gap-2 mt-4">
           <button type="submit" className="btn btn-success fw-bold px-4">{editId ? 'Guardar Cambios 💾' : 'Crear Edición ✨'}</button>
-          {editId && <button type="button" onClick={() => {setEditId(null); setUrlVideo(''); setFechaGala('');}} className="btn btn-outline-secondary">Cancelar</button>}
+          {editId && <button type="button" onClick={() => {setEditId(null); setUrlVideo(''); setFechaGala(''); setPaisHost('');}} className="btn btn-outline-secondary">Cancelar</button>}
         </div>
       </form>
 
+      {/* FILTROS Y TABLA */}
       <div className="card bg-dark p-0 border-secondary shadow overflow-hidden" style={{ borderRadius: '15px' }}>
         
         <div className="bg-black p-3 border-bottom border-secondary d-flex flex-wrap gap-3 align-items-end">
@@ -161,6 +168,7 @@ export default function ABMEdiciones() {
               <tr>
                 <th className="ps-4">Año</th>
                 <th>Tipo</th>
+                <th>Organizador (Host)</th>
                 <th>Fecha de Gala</th>
                 <th>Video</th>
                 <th className="text-end pe-4">Acciones</th>
@@ -174,6 +182,9 @@ export default function ABMEdiciones() {
                     <span className={`badge ${i.tipo === 'Final' ? 'bg-warning text-dark' : 'bg-info text-dark'}`}>
                       {i.tipo}
                     </span>
+                  </td>
+                  <td className="fw-bold text-light">
+                    {i.pais_host ? `🗺️ ${i.pais_host}` : <span className="text-muted small font-normal">-</span>}
                   </td>
                   <td>
                     {formatearFecha(i.fecha_gala)}
@@ -199,7 +210,7 @@ export default function ABMEdiciones() {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="5" className="text-center text-muted py-4">No se encontraron ediciones con ese filtro.</td>
+                  <td colSpan="6" className="text-center text-muted py-4">No se encontraron ediciones con ese filtro.</td>
                 </tr>
               )}
             </tbody>
