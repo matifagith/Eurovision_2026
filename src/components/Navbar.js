@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 export default function Navbar() {
   const [user, setUser] = useState(null)
-  const [menuAbierto, setMenuAbierto] = useState(false) // Nuevo estado para el menú móvil
+  const [menuAbierto, setMenuAbierto] = useState(false) 
   const pathname = usePathname()
   const router = useRouter()
 
@@ -116,7 +116,8 @@ export default function Navbar() {
                 MI PERFIL
               </Link>
               
-              <div className="mt-auto pt-4 border-top border-secondary">
+              {/* CAMBIO AQUÍ: Cambiamos mt-auto por mt-4 */}
+              <div className="mt-4 pt-4 border-top border-secondary">
                 <button 
                   onClick={handleLogout}
                   className="btn btn-outline-danger fw-bold py-3 rounded-pill btn-logout w-100"
