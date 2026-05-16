@@ -12,14 +12,17 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-// Login Tradicional
+  // --- ESTADOS PARA MODULO DE SOLICITUD DE CAMBIO DE CONTRASEÑA ---
+  const [modoRecuperacion, setModoRecuperacion] = useState(false)
+  const [usuarioRecuperacion, setUsuarioRecuperacion] = useState('')
+  const [emailRecuperacion, setEmailRecuperacion] = useState('')
+  const [mensajeRecuperacion, setMensajeRecuperacion] = useState(null)
+
+  // Login Tradicional
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-
-    // 🧹 LA SOLUCIÓN: Limpiar el rastro de Supabase Auth/Google antes de entrar
-    await supabase.auth.signOut()
 
     const { data: usuario, error: dbError } = await supabase
       .from('usuarios')
@@ -37,15 +40,91 @@ export default function LandingPage() {
     }
   }
 
-  // Login con Google (Modularizado)
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard` 
+  // Flujo de Validación de Correo y Envío de Solicitud a la Tabla
+  const handleRecuperarPassword = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setMensajeRecuperacion(null)
+
+    try {
+      // 1. Verificar si el nombre de usuario existe en la tabla manual
+      const { data: usuario, error: userError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('nombre', usuarioRecuperacion)
+        .single()
+
+      if (userError || !usuario) {
+        setError('El nombre de usuario ingresado no existe ❌')
+        setLoading(false)
+        return
       }
-    })
-    if (error) setError('Error al conectar con Google ❌')
+
+      // 2. NUEVO BLINDAJE: Validar si ya posee una solicitud pendiente en trámite
+      const { data: solicitudExistente, error: checkError } = await supabase
+        .from('solicitudes_cambio')
+        .select('id')
+        .eq('nombre_usuario', usuario.nombre)
+        .eq('estado', 'pendiente')
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      if (solicitudExistente) {
+        setError('Ya poseés una solicitud de cambio de contraseña en trámite. Por favor, aguardá a que el admin la apruebe. ⚠️')
+        setLoading(false)
+        return
+      }
+
+      // 3. Lógica de control de correos electrónicos
+      if (!usuario.email && !usuario.correo) {
+        // CASO A: No tiene correo vinculado, se lo asignamos ahora mismo en su perfil
+        const columnaEmail = usuario.email !== undefined ? 'email' : 'correo';
+        
+        await supabase
+          .from('usuarios')
+          .update({ [columnaEmail]: emailRecuperacion })
+          .eq('id_usuario', usuario.id_usuario)
+      } 
+      else {
+        // Obtenemos el mail que ya tiene guardado (venga de la columna que venga)
+        const emailRegistrado = usuario.email || usuario.correo;
+        
+        if (emailRegistrado.toLowerCase() !== emailRecuperacion.toLowerCase()) {
+          // CASO C: El correo ingresado no coincide con el que ya tiene registrado
+          setError('El correo electrónico asociado no corresponde al usuario, hablar con el admin. ⚠️')
+          setLoading(false)
+          return
+        }
+        // CASO B: Si coincide, pasa de largo directamente a crear la solicitud
+      }
+
+      // 4. Insertar la solicitud en tu nueva tabla 'solicitudes_cambio'
+      const { error: insertError } = await supabase
+        .from('solicitudes_cambio')
+        .insert([
+          { 
+            id_usuario: usuario.id_usuario, 
+            nombre_usuario: usuario.nombre, 
+            correo_solicitud: emailRecuperacion,
+            estado: 'pendiente'
+          }
+        ])
+
+      if (insertError) throw insertError
+
+      // Mensaje de éxito final indicando el link default por mail
+      setMensajeRecuperacion('Su solicitud fue enviada correctamente. Se le enviará un mail con la nueva contraseña default. ✉️')
+      setUsuarioRecuperacion('')
+      setEmailRecuperacion('')
+
+    } catch (err) {
+      console.error(err)
+      setError('Error al procesar la solicitud en el servidor. Intentá de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -55,68 +134,130 @@ export default function LandingPage() {
         <p className="lead text-secondary opacity-75">Iniciá sesión para evaluar las presentaciones</p>
       </div>
 
-      <div className="card shadow-lg p-4 bg-dark text-white border-secondary" style={{ maxWidth: '400px', width: '100%', borderRadius: '15px' }}>
-        <form onSubmit={handleLogin}>
-          <div className="mb-3">
-            <label className="form-label small fw-bold">NOMBRE DE USUARIO</label>
-            <input 
-              type="text" 
-              className="form-control bg-black text-white border-secondary shadow-none" 
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="mb-3">
-            <label className="form-label small fw-bold">CONTRASEÑA</label>
-            <div className="input-group">
+      <div className="card shadow-lg p-4 bg-dark text-white border-secondary position-relative overflow-hidden" style={{ maxWidth: '400px', width: '100%', borderRadius: '15px' }}>
+        
+        {/* --- PANEL DE RECUPERACIÓN --- */}
+        {modoRecuperacion ? (
+          <form onSubmit={handleRecuperarPassword} className="fade-in">
+            <h5 className="fw-bold mb-3 text-center text-info">Solicitar Nueva Contraseña</h5>
+            <p className="small text-secondary mb-4 text-center">
+              Ingresá tu usuario y correo. Si tus datos son correctos, el administrador generará una contraseña temporal y te llegará por mail.
+            </p>
+
+            <div className="mb-3">
+              <label className="form-label small fw-bold">NOMBRE DE USUARIO</label>
               <input 
-                type={verContrasena ? "text" : "password"} 
+                type="text" 
                 className="form-control bg-black text-white border-secondary shadow-none" 
-                value={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
+                value={usuarioRecuperacion}
+                onChange={(e) => setUsuarioRecuperacion(e.target.value)}
+                placeholder="Ej: mauro_sa"
                 required
               />
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label small fw-bold">CORREO ELECTRÓNICO</label>
+              <input 
+                type="email" 
+                className="form-control bg-black text-white border-secondary shadow-none" 
+                value={emailRecuperacion}
+                onChange={(e) => setEmailRecuperacion(e.target.value)}
+                placeholder="tu_correo@ejemplo.com"
+                required
+              />
+            </div>
+
+            {error && <p className="text-danger small mb-3 text-center">{error}</p>}
+            {mensajeRecuperacion && <p className="text-success small mb-3 text-center fw-bold">{mensajeRecuperacion}</p>}
+
+            <button 
+              type="submit" 
+              className="btn btn-info w-100 fw-bold py-2 shadow-sm text-white mb-3"
+              disabled={loading}
+            >
+              {loading ? 'Procesando...' : 'Enviar Solicitud'}
+            </button>
+
+            <div className="text-center">
               <button 
                 type="button" 
-                className="btn btn-outline-secondary border-secondary"
-                onClick={() => setVerContrasena(!verContrasena)}
+                onClick={() => { setModoRecuperacion(false); setError(null); setMensajeRecuperacion(null); }} 
+                className="btn btn-link btn-sm text-secondary text-decoration-none p-0"
               >
-                {verContrasena ? '👁️' : '🙈'}
+                ← Volver al inicio de sesión
               </button>
             </div>
-          </div>
+          </form>
+        ) : (
+          
+          /* --- PANEL DE LOGIN TRADICIONAL --- */
+          <form onSubmit={handleLogin} className="fade-in">
+            <div className="mb-3">
+              <label className="form-label small fw-bold">NOMBRE DE USUARIO</label>
+              <input 
+                type="text" 
+                autoComplete="username" 
+                className="form-control bg-black text-white border-secondary shadow-none" 
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="mb-3">
+              <label className="form-label small fw-bold">CONTRASEÑA</label>
+              <div className="input-group">
+                <input 
+                  type={verContrasena ? "text" : "password"} 
+                  autoComplete="current-password" 
+                  className="form-control bg-black text-white border-secondary shadow-none border-end-0" 
+                  value={contrasena}
+                  onChange={(e) => setContrasena(e.target.value)}
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="btn border-secondary border-start-0 bg-black text-secondary"
+                  onClick={() => setVerContrasena(!verContrasena)}
+                >
+                  {verContrasena ? '👁️' : '🙈'}
+                </button>
+              </div>
+            </div>
 
-          <div className="d-flex justify-content-end mb-3">
-            <button type="button" onClick={() => alert("Uf que pena: hablar con mauro.")} className="btn btn-link btn-sm text-secondary text-decoration-none p-0">
-              ¿Olvidaste tu contraseña?
+            <div className="d-flex justify-content-end mb-3">
+              <button 
+                type="button" 
+                onClick={() => { setModoRecuperacion(true); setError(null); }} 
+                className="btn btn-link btn-sm text-secondary text-decoration-none p-0"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+
+            {error && <p className="text-danger small mb-3 text-center">{error}</p>}
+
+            <button 
+              type="submit" 
+              className="btn btn-primary w-100 fw-bold py-2 shadow-sm"
+              disabled={loading}
+            >
+              {loading ? 'Verificando...' : 'Entrar'}
             </button>
-          </div>
-
-          {error && <p className="text-danger small mb-3 text-center">{error}</p>}
-
-          <button 
-            type="submit" 
-            className="btn btn-primary w-100 fw-bold py-2 shadow-sm"
-            disabled={loading}
-          >
-            {loading ? 'Verificando...' : 'Entrar'}
-          </button>
-        </form>
-        {/*
-        DESCOMENTAR ESTO PARA VISUALIZAR AUTH GOOGLE EN LANDING PAGE
-        <div className="text-center my-3 opacity-50 small">O CONTINUAR CON</div>
-
-        <button 
-          onClick={handleGoogleLogin}
-          className="btn btn-outline-light w-100 fw-bold d-flex align-items-center justify-content-center gap-2 border-secondary py-2"
-        >
-          <img src="https://www.google.com/favicon.ico" alt="google" width="16" />
-          Google
-        </button>
-        */}
+          </form>
+        )}
       </div>
+
+      <style jsx>{`
+        .fade-in {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </main>
   )
 }

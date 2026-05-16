@@ -7,28 +7,36 @@ import Link from 'next/link'
 export default function AdminPage() {
   const [ediciones, setEdiciones] = useState([])
   const [loading, setLoading] = useState(true)
+  const [haySolicitudes, setHaySolicitudes] = useState(false) // Estado indicador de alertas
 
-  const fetchEdiciones = async () => {
+  const fetchDatosPanel = async () => {
+    // 1. Cargar ediciones históricas
     const { data } = await supabase
       .from('ediciones')
       .select('*')
       .order('anio', { ascending: false })
     setEdiciones(data || [])
+    
+    // 2. Revisar silenciosamente si existen solicitudes pendientes
+    const { count } = await supabase
+      .from('solicitudes_cambio')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente')
+      
+    setHaySolicitudes(count > 0)
     setLoading(false)
   }
 
-  useEffect(() => { fetchEdiciones() }, [])
+  useEffect(() => { fetchDatosPanel() }, [])
 
-  // Función original para habilitar/bloquear votos
   const toggleVotacion = async (id, estadoActual) => {
     await supabase.from('ediciones').update({ votacion_abierta: !estadoActual }).eq('id_edicion', id)
-    fetchEdiciones()
+    fetchDatosPanel()
   }
 
-  // NUEVA: Función para habilitar/bloquear visibilidad (edicion_lista)
   const toggleEdicionLista = async (id, estadoActual) => {
     await supabase.from('ediciones').update({ edicion_lista: !estadoActual }).eq('id_edicion', id)
-    fetchEdiciones()
+    fetchDatosPanel()
   }
 
   return (
@@ -38,7 +46,23 @@ export default function AdminPage() {
         
         <div className="d-flex flex-wrap justify-content-center gap-2 bg-dark p-3 rounded shadow-sm border border-secondary">
           <Link href="/admin/categorias" className="btn btn-outline-primary fw-bold">Categorías</Link>
+          
+          {/* BOTÓN USUARIOS: Vuelve a su estado original limpio */}
           <Link href="/admin/usuarios" className="btn btn-outline-info fw-bold">Usuarios</Link>
+          
+          {/* NUEVO BOTÓN FIJO: Solicitudes (Se ilumina y parpadea solo si hay pendientes) */}
+          <Link 
+            href="/admin/solicitudes" 
+            className={`btn fw-bold position-relative ${haySolicitudes ? 'btn-warning text-dark shadow-glow' : 'btn-outline-warning'}`}
+          >
+            Solicitudes {haySolicitudes ? '⚠️' : ''}
+            {haySolicitudes && (
+              <span className="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle animation-pulse">
+                <span className="visually-hidden">Alertas</span>
+              </span>
+            )}
+          </Link>
+
           <Link href="/admin/artistas" className="btn btn-outline-warning fw-bold">Artistas</Link>
           <Link href="/admin/canciones" className="btn btn-outline-light fw-bold">Canciones</Link>
           <Link href="/admin/paises" className="btn btn-outline-danger fw-bold">Países</Link>
@@ -55,12 +79,10 @@ export default function AdminPage() {
                 <div>
                   <h3 className="card-title fw-bold text-white mb-1">{edicion.tipo} {edicion.anio}</h3>
                   <div className="d-flex justify-content-center gap-2 mb-3">
-                    {/* Badge de Votación */}
                     {edicion.votacion_abierta ? 
                       <span className="badge bg-success">VOTOS ABIERTOS 🟢</span> : 
                       <span className="badge bg-danger">VOTOS CERRADOS 🔴</span>
                     }
-                    {/* Badge de Edición Lista */}
                     {edicion.edicion_lista ? 
                       <span className="badge bg-primary">PUBLICADA 🌍</span> : 
                       <span className="badge bg-warning text-dark">BORRADOR 🚧</span>
@@ -69,7 +91,6 @@ export default function AdminPage() {
                 </div>
 
                 <div className="d-grid gap-2">
-                  {/* BOTÓN NUEVO: Habilitar/Bloquear Edición */}
                   <button 
                     onClick={() => toggleEdicionLista(edicion.id_edicion, edicion.edicion_lista)} 
                     className={`btn fw-bold ${edicion.edicion_lista ? 'btn-outline-warning' : 'btn-primary'}`}
@@ -77,7 +98,6 @@ export default function AdminPage() {
                     {edicion.edicion_lista ? 'Ocultar (Coming Soon) 🔒' : 'Habilitar Edición 🔓'}
                   </button>
 
-                  {/* BOTÓN ORIGINAL: Habilitar/Bloquear Votación */}
                   <button 
                     onClick={() => toggleVotacion(edicion.id_edicion, edicion.votacion_abierta)} 
                     className={`btn fw-bold ${edicion.votacion_abierta ? 'btn-outline-danger' : 'btn-success'}`}
@@ -89,23 +109,32 @@ export default function AdminPage() {
                     Categorías a evaluar 📋
                   </Link>
 
-                  {/* ... dentro del map de ediciones en admin/page.js ... */}
-                <div className="d-grid gap-2">
-                  {/* Botones anteriores (Habilitar Edición, Votación, etc.) */}
-                  
                   <Link 
                     href={`/admin/votos?edicionId=${edicion.id_edicion}`} 
                     className="btn btn-outline-info fw-bold shadow-sm"
                   >
                     Ver Votos 🗳️
-                  </Link>  
-</div>
+                  </Link>   
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      <style jsx>{`
+        .shadow-glow {
+          box-shadow: 0 0 15px rgba(255, 193, 7, 0.5) !important;
+        }
+        @keyframes pulse {
+          0% { transform: scale(0.9); opacity: 0.8; }
+          50% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(0.9); opacity: 0.8; }
+        }
+        .animation-pulse {
+          animation: pulse 1.8s infinite ease-in-out;
+        }
+      `}</style>
     </main>
   )
 }
