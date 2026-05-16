@@ -53,6 +53,10 @@ export default function Dashboard() {
   const [ediciones, setEdiciones] = useState([])
   const [años, setAños] = useState([])
   const [cargando, setCargando] = useState(true) 
+  
+  // NUEVO: Estado para saber qué año está expandido (abierto)
+  const [anioExpandido, setAnioExpandido] = useState(null)
+
   const router = useRouter()
 
   useEffect(() => {
@@ -75,6 +79,11 @@ export default function Dashboard() {
         setEdiciones(data || [])
         const years = [...new Set((data || []).map(e => e.anio))]
         setAños(years)
+        
+        // Al cargar, abrimos la temporada más reciente por defecto
+        if (years.length > 0) {
+          setAnioExpandido(years[0])
+        }
       } else {
         console.error("Error cargando galas:", error)
       }
@@ -84,6 +93,15 @@ export default function Dashboard() {
     
     fetchEdiciones()
   }, [router])
+
+  // Función para alternar el acordeón
+  const alternarTemporada = (anio) => {
+    if (anioExpandido === anio) {
+      setAnioExpandido(null); // Si ya estaba abierto, lo cerramos
+    } else {
+      setAnioExpandido(anio); // Abrimos el nuevo
+    }
+  };
 
   return (
     <main className="container mt-5 pb-5 font-sans text-white">
@@ -95,7 +113,6 @@ export default function Dashboard() {
              borderRadius: '24px' 
            }}>
         
-        {/* Marca de agua decorativa de fondo */}
         <div className="position-absolute top-0 end-0 opacity-10 user-select-none" 
              style={{ transform: 'translate(10%, -15%)', fontSize: '15rem', pointerEvents: 'none' }}>
           🎤
@@ -112,7 +129,6 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="col-md-3 text-end d-none d-md-flex justify-content-end">
-              {/* Contenedor circular con efecto cristal para el emoji */}
               <div className="d-inline-flex align-items-center justify-content-center shadow-sm" 
                    style={{ 
                      width: '100px', 
@@ -151,6 +167,7 @@ export default function Dashboard() {
         años.map(anio => {
           const edicionesDelAnio = ediciones.filter(e => e.anio === anio);
           const paisHost = edicionesDelAnio.find(e => e.pais_host)?.pais_host;
+          const estaExpandido = anioExpandido === anio; // ¿Es esta la temporada activa?
 
           // Orden de las tarjetas
           const ordenTipos = { 'Semi 1': 1, 'Semi 2': 2, 'Final': 3 };
@@ -161,123 +178,158 @@ export default function Dashboard() {
           });
 
           return (
-            <section key={anio} className="mb-5">
+            <section key={anio} className="mb-4">
               
-              {/* BADGE DE AÑO Y HOST (DISEÑO PREMIUM) */}
-              <div className="d-flex align-items-center mb-4">
-                <div className="d-inline-flex align-items-center px-4 py-2 rounded-pill shadow-sm" 
+              {/* BADGE DE AÑO Y HOST (AHORA ES CLICKABLE Y TIENE GLOW) */}
+              <div 
+                className="d-flex align-items-center mb-3" 
+                onClick={() => alternarTemporada(anio)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                <div className={`d-inline-flex align-items-center px-4 py-3 rounded-pill shadow-sm transition-all ${estaExpandido ? 'glow-active' : ''}`} 
                      style={{ 
-                       background: 'rgba(255, 255, 255, 0.03)', 
-                       border: '1px solid rgba(255, 255, 255, 0.1)', 
-                       backdropFilter: 'blur(5px)' 
+                       background: estaExpandido ? 'rgba(13, 202, 240, 0.05)' : 'rgba(255, 255, 255, 0.03)', 
+                       border: estaExpandido ? '1px solid #0dcaf0' : '1px solid rgba(255, 255, 255, 0.1)', 
+                       backdropFilter: 'blur(5px)',
+                       transition: 'all 0.3s ease'
                      }}>
-                  <span className="fw-bold text-white text-uppercase" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>
+                  <span className={`fw-bold text-uppercase ${estaExpandido ? 'text-info' : 'text-white'}`} style={{ letterSpacing: '2px', fontSize: '0.9rem', transition: 'color 0.3s' }}>
                     TEMPORADA {anio}
                   </span>
                   {paisHost && (
                     <>
                       <span className="mx-3 text-secondary opacity-50">|</span>
-                      <span className="fw-bold" style={{ color: '#0dcaf0', letterSpacing: '1px', fontSize: '0.85rem' }}>
+                      <span className="fw-bold" style={{ color: '#0dcaf0', letterSpacing: '1px', fontSize: '0.9rem' }}>
                         📍 {paisHost.toUpperCase()}
                       </span>
                     </>
                   )}
+                  {/* Icono indicador de estado */}
+                  <span className="ms-3 text-secondary opacity-75" style={{ fontSize: '0.8rem', transition: 'transform 0.3s ease', transform: estaExpandido ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    ▼
+                  </span>
                 </div>
                 <div className="flex-grow-1 border-bottom border-secondary opacity-25 ms-3 d-none d-md-block"></div>
               </div>
               
-              <div className="row g-4">
-                {edicionesOrdenadas.map(ed => {
-                  const estaLista = ed.edicion_lista;
-                  const abierta = ed.votacion_abierta;
+              {/* CONTENEDOR COLAPSABLE DE LAS TARJETAS */}
+              {estaExpandido && (
+                <div className="row g-4 mt-1 fade-in-section pb-4">
+                  {edicionesOrdenadas.map(ed => {
+                    const estaLista = ed.edicion_lista;
+                    const abierta = ed.votacion_abierta;
 
-                  return (
-                    <div key={ed.id_edicion} className="col-md-4">
-                      <div 
-                        onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
-                        className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
-                        style={{ cursor: estaLista ? 'pointer' : 'default', borderRadius: '15px', transition: 'all 0.3s ease' }}
-                      >
-                        <div className="card-body p-4 text-center">
-                          <div className="mb-3">
-                            {ed.tipo.toLowerCase().includes('final') ? (
-                              <span style={{ fontSize: '2.5rem' }}>🏆</span>
-                            ) : (
-                              <span style={{ fontSize: '2.5rem' }}>✨</span>
-                            )}
-                          </div>
-                          
-                          <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
-                            {ed.tipo}
-                          </h4>
-                          <p className="text-muted small text-uppercase mb-2" style={{ letterSpacing: '1px' }}>{anio}</p>
-                          
-                          {/* Botón de Video YouTube */}
-                          {ed.url_video ? (
-                            <div className="mb-4">
-                              <a 
-                                href={ed.url_video} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="badge bg-danger text-white text-decoration-none py-2 px-3 shadow-sm"
-                                onClick={(e) => e.stopPropagation()} 
-                              >
-                                ▶ VER VIDEO
-                              </a>
+                    return (
+                      <div key={ed.id_edicion} className="col-md-4">
+                        <div 
+                          onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
+                          className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
+                          style={{ cursor: estaLista ? 'pointer' : 'default', borderRadius: '15px', transition: 'all 0.3s ease' }}
+                        >
+                          <div className="card-body p-4 text-center">
+                            <div className="mb-3">
+                              {ed.tipo.toLowerCase().includes('final') ? (
+                                <span style={{ fontSize: '2.5rem' }}>🏆</span>
+                              ) : (
+                                <span style={{ fontSize: '2.5rem' }}>✨</span>
+                              )}
                             </div>
-                          ) : (
-                            <div className="mb-4" style={{ height: '26px' }}></div>
-                          )}
-
-                          <div className="d-grid gap-2">
-                            {!estaLista ? (
-                              <div className="btn btn-outline-secondary disabled fw-bold opacity-75 font-monospace" style={{ border: '1px solid #444', letterSpacing: '0.5px' }}>
-                                <ContadorGala fechaDestino={ed.fecha_gala} />
-                              </div>
-                            ) : abierta ? (
-                              <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
-                            ) : (
-                              <>
-                                <button className="btn btn-outline-light fw-bold opacity-75">MI VOTACIÓN 📊</button>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    const esSemi = ed.tipo.toLowerCase().includes('semi');
-                                    const ruta = esSemi ? 'semifinal' : 'final';
-                                    router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
-                                  }}
-                                  className="btn btn-outline-light fw-bold opacity-75"
+                            
+                            <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
+                              {ed.tipo}
+                            </h4>
+                            <p className="text-muted small text-uppercase mb-2" style={{ letterSpacing: '1px' }}>{anio}</p>
+                            
+                            {/* Botón de Video YouTube */}
+                            {ed.url_video ? (
+                              <div className="mb-4">
+                                <a 
+                                  href={ed.url_video} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="badge bg-danger text-white text-decoration-none py-2 px-3 shadow-sm"
+                                  onClick={(e) => e.stopPropagation()} 
                                 >
-                                  ESTADÍSTICA GLOBAL 📈
-                                </button>
-                              </>
+                                  ▶ VER VIDEO
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="mb-4" style={{ height: '26px' }}></div>
                             )}
-                          </div>
-                        </div>
 
-                        {estaLista && (
-                          <div className="position-absolute top-0 end-0 p-3">
-                            <span className={`badge rounded-pill ${abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
-                                  style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
-                              {abierta ? 'LIVE' : 'CLOSED'}
-                            </span>
+                            <div className="d-grid gap-2">
+                              {!estaLista ? (
+                                <div className="btn btn-outline-secondary disabled fw-bold opacity-75 font-monospace" style={{ border: '1px solid #444', letterSpacing: '0.5px' }}>
+                                  <ContadorGala fechaDestino={ed.fecha_gala} />
+                                </div>
+                              ) : abierta ? (
+                                <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
+                              ) : (
+                                <>
+                                  <button className="btn btn-outline-light fw-bold opacity-75">MI VOTACIÓN 📊</button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation(); 
+                                      const esSemi = ed.tipo.toLowerCase().includes('semi');
+                                      const ruta = esSemi ? 'semifinal' : 'final';
+                                      router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
+                                    }}
+                                    className="btn btn-outline-light fw-bold opacity-75"
+                                  >
+                                    ESTADÍSTICA GLOBAL 📈
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        )}
+
+                          {estaLista && (
+                            <div className="position-absolute top-0 end-0 p-3">
+                              <span className={`badge rounded-pill ${abierta ? 'bg-success shadow-sm' : 'bg-danger opacity-75'}`} 
+                                    style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>
+                                {abierta ? 'LIVE' : 'CLOSED'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           );
         })
       )}
 
+      {/* ESTILOS CSS */}
       <style jsx>{`
         .btn-hover-effect:hover {
           transform: translateY(-10px);
           border-color: #0d6efd !important;
           box-shadow: 0 10px 30px rgba(13, 110, 253, 0.3) !important;
+        }
+
+        /* Efecto Glow para la temporada seleccionada */
+        .glow-active {
+          box-shadow: 0 0 20px rgba(13, 202, 240, 0.3) !important;
+          transform: scale(1.02);
+        }
+
+        /* Animación de entrada para las tarjetas */
+        .fade-in-section {
+          animation: fadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-15px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </main>
