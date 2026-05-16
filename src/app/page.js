@@ -72,7 +72,7 @@ export default function LandingPage() {
       if (checkError) throw checkError
 
       if (solicitudExistente) {
-        setError('Ya poseés una solicitud de cambio de contraseña en trámite. Por favor, aguardá a que el admin la apruebe. ⚠️')
+        setError('Ya poseés una solicitud de cambio de contraseña en trámite. Por favor, aguardá a que el admin la apruebe. ⚠️. No olvides chequear el spam de tu correo.')
         setLoading(false)
         return
       }
@@ -115,7 +115,7 @@ export default function LandingPage() {
       if (insertError) throw insertError
 
       // Mensaje de éxito final indicando el link default por mail
-      setMensajeRecuperacion('Su solicitud fue enviada correctamente. Se le enviará un mail con la nueva contraseña default. ✉️')
+      setMensajeRecuperacion('Su solicitud fue enviada correctamente. Se le enviará un mail con la nueva contraseña default. Chequea en spam. ✉️')
       setUsuarioRecuperacion('')
       setEmailRecuperacion('')
 
