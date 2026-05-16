@@ -1,43 +1,46 @@
-# Eurovision Vote App 🎤🗳️
+# 🗳️ Eurovision Vote App
 
-## Descripción General
-**Eurovision Vote App** es una plataforma web moderna diseñada para la evaluación y votación en tiempo real de presentaciones musicales. La aplicación permite a jueces autorizados puntuar las galas (Semifinales y Final) basándose en diversos criterios, proporcionando estadísticas globales y una gestión centralizada de usuarios.
+**Eurovision Vote App** es una plataforma web interactiva diseñada exclusivamente para la gestión, auditoría y escrutinio oficial de votos en festivales musicales. 
 
-El sistema destaca por su enfoque híbrido de autenticación, permitiendo tanto el acceso tradicional mediante credenciales locales como el inicio de sesión ágil a través de Google.
-
----
-
-## 🚀 Tecnologías Utilizadas
-
-- **Frontend:** [Next.js](https://nextjs.org/) (App Router)
-- **Estilos:** [Bootstrap 5](https://getbootstrap.com/) & CSS Personalizado
-- **Base de Datos & Auth:** [Supabase](https://supabase.com/) (PostgreSQL + Supabase Auth)
-- **Despliegue:** [Vercel](https://vercel.com/)
-- **Autenticación Social:** OAuth 2.0 (Google)
+El sistema centraliza todo el desarrollo del certamen, permitiendo a los administradores controlar las fases de la competencia en vivo y ofreciendo al jurado una interfaz simplificada para calificar las canciones de forma rápida y sin fricciones.
 
 ---
 
-## ✨ Características Principales
+## 🎭 ¿Qué hace la aplicación? (Funcionalidades Clave)
 
-### 🔐 Sistema de Autenticación Híbrido
-- **Login Tradicional:** Acceso mediante nombre de usuario y contraseña almacenados en una tabla pública.
-- **Login Social (Google):** Integración con Google Auth para un acceso rápido.
-- **Vínculo de Cuentas:** Lógica de base de datos automatizada (PostgreSQL Triggers) que vincula inicios de sesión de Google con cuentas existentes basadas en el correo electrónico.
-- **Persistencia:** Gestión de estado mediante `localStorage` sincronizado con un `AuthProvider` global para evitar conflictos entre sesiones.
+El sistema divide sus responsabilidades en tres grandes pilares para garantizar que la noche del festival sea un éxito rotundo:
 
-### 👥 Gestión de Usuarios y Roles
-- **Administrador:**
-    - Panel ABM (Alta, Baja, Modificación) de usuarios.
-    - Control de permisos y visualización de contraseñas de jueces.
-    - **Protección de Cuenta:** Los administradores tienen bloqueada la edición y eliminación desde la interfaz para prevenir bloqueos accidentales.
-- **Juez:**
-    - Acceso a un Dashboard personalizado.
-    - Historial de galas disponibles para votación.
-    - Visualización de estadísticas globales de las presentaciones.
+### 👑 1. Control Total del Festival (Panel de Administrador)
+El administrador del evento cuenta con una cabina de control digital para dirigir el festival en tiempo real:
+* **Habilitador de Votaciones:** Permite abrir y cerrar las urnas digitales para galas específicas (ej: *Primera Semifinal, Segunda Semifinal o la Gran Final*) con un solo clic, asegurando que nadie vote fuera de hora.
+* **Interruptor de Visibilidad:** Controla qué ediciones están listas para ser vistas por el público o cuáles se mantienen en modo **Borrador** mientras se cargan los artistas.
+* **Escrutinio en Vivo:** Acceso instantáneo a las planillas consolidadas para auditar qué está votando cada miembro del jurado.
+* **Gestión de Contenidos:** Centrales independientes para dar de alta, editar o remover Artistas, Canciones, Países participantes y Categorías de evaluación.
 
-### 📊 Votación y Dashboard
-- Organización por eventos (Semi 1, Semi 2 y Final).
-- Interfaz intuitiva para la carga de puntajes por categorías.
-- Actualización dinámica del estado de las votaciones (Abiertas/Cerradas).
+### ⚖️ 2. Sistema de Calificación para Jurados (Jueces)
+Los miembros del jurado disponen de un entorno optimizado para dispositivos móviles y computadoras:
+* **Puntuación Intuitiva:** Una interfaz limpia para evaluar las presentaciones musicales en las distintas categorías del festival a medida que ocurren en el escenario.
+* **Resultados Blindados:** Los votos se envían de forma directa y segura, evitando planillas de papel o recuentos manuales lentos.
+
+### 🔑 3. Centro de Soporte y Blanqueo Automatizado
+Para evitar contratiempos o usuarios varados la noche del evento, la app cuenta con un sistema inteligente de recuperación de accesos:
+* **Solicitud de Auxilio:** Si un juez olvida su clave, la solicita desde la pantalla de inicio ingresando su usuario y su correo.
+* **Escudo Anti-Spam:** El sistema bloquea de forma inteligente solicitudes duplicadas si el usuario ya tiene un trámite en curso, protegiendo el orden del panel.
+* **Cola de Atención en Cero:** El administrador visualiza las solicitudes pendientes en un panel limpio. Con un solo botón, el sistema genera una contraseña segura, actualiza la cuenta del juez y le despacha un correo electrónico automático con los nuevos datos de acceso.
+* **Botonera de Rechazo:** Si la solicitud es un error o una prueba, el administrador puede denegarla para archivarla de forma segura.
+* **Historial de Auditoría:** Un registro completo en la parte inferior detalla qué solicitudes fueron aprobadas o denegadas en el pasado para mantener un control estricto de la seguridad.
 
 ---
+
+## 📋 Flujo de Trabajo del Evento
+
+1. **Preparación:** El administrador carga las canciones, países y activa el modo **Publicada** en la gala correspondiente.
+2. **Acceso:** Los jueces inician sesión. Si alguno no recuerda su clave, genera una solicitud que el administrador aprueba en segundos enviando un mail automático.
+3. **Gala en Vivo:** El administrador presiona **Habilitar Votación**. Los jueces califican a los artistas en tiempo real.
+4. **Cierre y Cómputo:** Se presiona **Cerrar Votación** y el sistema genera el escrutinio oficial del festival de manera inmediata y sin errores humanos.
+
+---
+
+## 🚀 Filosofía del Proyecto
+
+Este desarrollo nace para profesionalizar la experiencia de votación en certámenes musicales, eliminando la burocracia de los cálculos manuales y garantizando transparencia, velocidad y soporte inmediato para todos los participantes.
