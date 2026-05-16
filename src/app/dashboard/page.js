@@ -194,7 +194,7 @@ export default function Dashboard() {
                        transition: 'all 0.3s ease'
                      }}>
                   <span className={`fw-bold text-uppercase ${estaExpandido ? 'text-info' : 'text-white'}`} style={{ letterSpacing: '2px', fontSize: '0.9rem', transition: 'color 0.3s' }}>
-                    TEMPORADA {anio}
+                    {anio}
                   </span>
                   {paisHost && (
                     <>
