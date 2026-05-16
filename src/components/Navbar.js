@@ -48,9 +48,7 @@ export default function Navbar() {
               href="/perfil" 
               className={`btn btn-sm fw-bold text-white px-4 py-2 rounded-pill d-none d-sm-inline-flex align-items-center gap-2 btn-custom-nav ${pathname === '/perfil' ? 'active' : ''}`}
               style={{ fontSize: '0.75rem', letterSpacing: '1px' }}
-            >
-              MI PERFIL <span style={{ fontSize: '0.9rem', margin: '-2px 0' }}>👤</span>
-            </Link>
+            >MI PERFIL</Link>
             
             {/* BOTÓN: SALIR */}
             <button 
