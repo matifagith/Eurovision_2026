@@ -4,6 +4,53 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+// Mini-componente para la cuenta regresiva
+const ContadorGala = ({ fechaDestino }) => {
+  const [tiempoRestante, setTiempoRestante] = useState('');
+
+  useEffect(() => {
+    // Si el admin no configuró una fecha, mostramos el texto por defecto
+    if (!fechaDestino) {
+      setTiempoRestante('COMING SOON ⏳');
+      return;
+    }
+
+    const actualizarContador = () => {
+      const ahora = new Date().getTime();
+      const destino = new Date(fechaDestino).getTime();
+      const distancia = destino - ahora;
+
+      if (distancia < 0) {
+        setTiempoRestante('¡ES HOY! 🎉');
+        return;
+      }
+
+      const dias = Math.floor(distancia / (1000 * 60 * 60 * 24));
+      const horas = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutos = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
+      const segundos = Math.floor((distancia % (1000 * 60)) / 1000);
+
+      // Formateamos para que siempre tenga dos dígitos (ej: 09m 05s)
+      const h = horas < 10 ? `0${horas}` : horas;
+      const m = minutos < 10 ? `0${minutos}` : minutos;
+      const s = segundos < 10 ? `0${segundos}` : segundos;
+
+      if (dias > 0) {
+        setTiempoRestante(`FALTAN ${dias}d ${h}h ${m}m`);
+      } else {
+        setTiempoRestante(`FALTAN ${h}:${m}:${s} ⏳`);
+      }
+    };
+
+    actualizarContador(); // Ejecutamos una vez al instante
+    const intervalo = setInterval(actualizarContador, 1000); // Luego cada 1 segundo
+
+    return () => clearInterval(intervalo);
+  }, [fechaDestino]);
+
+  return <>{tiempoRestante}</>;
+};
+
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [ediciones, setEdiciones] = useState([])
@@ -95,7 +142,6 @@ export default function Dashboard() {
 
                 return (
                   <div key={ed.id_edicion} className="col-md-4">
-                    {/* TU CÓDIGO DE LA TARJETA (Queda exactamente igual) */}
                     <div 
                       onClick={() => estaLista && router.push(`/vote?edicionId=${ed.id_edicion}`)}
                       className={`card bg-dark border-secondary h-100 shadow-sm position-relative overflow-hidden ${estaLista ? 'btn-hover-effect' : 'opacity-50'}`}
@@ -113,18 +159,34 @@ export default function Dashboard() {
                         <h4 className={`fw-bold mb-1 ${estaLista ? 'text-warning' : 'text-secondary opacity-75'}`}>
                           {ed.tipo}
                         </h4>
-                        <p className="text-muted small text-uppercase mb-3" style={{ letterSpacing: '1px' }}>{anio}</p>
+                        <p className="text-muted small text-uppercase mb-2" style={{ letterSpacing: '1px' }}>{anio}</p>
                         
+                        {/* NUEVO: Botón de Video YouTube */}
+                        {ed.url_video && (
+                          <div className="mb-4">
+                            <a 
+                              href={ed.url_video} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="badge bg-danger text-white text-decoration-none py-2 px-3 shadow-sm"
+                              onClick={(e) => e.stopPropagation()} // Evita que se abra la gala al hacer clic en el video
+                            >
+                              ▶ VER VIDEO
+                            </a>
+                          </div>
+                        )}
+                        {!ed.url_video && <div className="mb-4"></div> /* Espaciador si no hay video */}
+
                         <div className="d-grid gap-2">
                           {!estaLista ? (
-                            <div className="btn btn-outline-secondary disabled fw-bold opacity-50" style={{ border: '1px solid #444' }}>
-                              COMING SOON ⏳
+                            <div className="btn btn-outline-secondary disabled fw-bold opacity-75 font-monospace" style={{ border: '1px solid #444', letterSpacing: '0.5px' }}>
+                              <ContadorGala fechaDestino={ed.fecha_gala} />
                             </div>
                           ) : abierta ? (
                             <button className="btn btn-primary fw-bold shadow-sm">VOTAR AHORA →</button>
                           ) : (
                             <>
-                              <button className="btn btn-outline-light fw-bold opacity-75">VER MI VOTACIÓN 📊</button>
+                              <button className="btn btn-outline-light fw-bold opacity-75">MI VOTACIÓN 📊</button>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation(); 
@@ -132,7 +194,7 @@ export default function Dashboard() {
                                   const ruta = esSemi ? 'semifinal' : 'final';
                                   router.push(`/estadisticas/${ruta}?edicionId=${ed.id_edicion}`);
                                 }}
-                                className="btn btn-info fw-bold text-white shadow-sm mt-1"
+                                className="btn btn-outline-light fw-bold opacity-75"
                               >
                                 ESTADÍSTICA GLOBAL 📈
                               </button>
