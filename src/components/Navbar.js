@@ -53,7 +53,7 @@ export default function Navbar() {
                   className={`btn btn-sm fw-bold text-white px-4 py-2 rounded-pill d-inline-flex align-items-center gap-2 btn-custom-nav ${pathname === '/perfil' ? 'active' : ''}`}
                   style={{ fontSize: '0.75rem', letterSpacing: '1px' }}
                 >
-                  MI PERFIL <span style={{ fontSize: '0.9rem', margin: '-2px 0' }}>👤</span>
+                  MI PERFIL
                 </Link>
                 
                 <button 
@@ -113,7 +113,7 @@ export default function Navbar() {
                 className={`btn fw-bold text-white py-3 rounded-pill d-flex justify-content-center align-items-center gap-2 btn-custom-nav ${pathname === '/perfil' ? 'active' : ''}`}
                 style={{ letterSpacing: '1px' }}
               >
-                MI PERFIL <span>👤</span>
+                MI PERFIL
               </Link>
               
               <div className="mt-auto pt-4 border-top border-secondary">
